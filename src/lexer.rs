@@ -8,7 +8,7 @@ pub struct Lexer {
 impl Lexer {
     // static constructor
     pub fn new() -> Lexer {
-        let token_patterns = vec![("NUM", r"\d+(\.\d)*"), ("OP", r"\+")];
+        let token_patterns = vec![("NUM", r"\d+(\.\d)*"), ("OP", r"[\+\*]")];
         let re = make_regex(&token_patterns);
         let names = get_names(&token_patterns);
         let re = Regex::new(&re).expect("something went wrong making the regex");
