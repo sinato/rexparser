@@ -1,7 +1,7 @@
 mod lexer;
 use lexer::{Token, Tokens};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 struct AddNode {
     lhs: Token,
     rhs: Token,
@@ -27,4 +27,24 @@ fn main() {
     println!("tokens: {:?}", tokens);
     let node = parse(tokens);
     println!("node: {:?}", node);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_add() {
+        let input = String::from("1 + 2");
+        let lexer = lexer::Lexer::new();
+        let tokens = lexer.lex(input);
+        let node = parse(tokens);
+
+        let expected = AddNode {
+            lhs: Token::Num(1),
+            rhs: Token::Num(2),
+        };
+
+        assert_eq!(node, expected);
+    }
 }
