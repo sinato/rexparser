@@ -1,6 +1,8 @@
 use log::debug;
 use regex::Regex;
 
+use crate::token::{Token, Tokens};
+
 pub struct Lexer {
     re: Regex,
     names: Vec<&'static str>,
@@ -54,42 +56,4 @@ fn get_names<'a, 'b>(token_patterns: &Vec<(&'a str, &'b str)>) -> Vec<&'a str> {
         .into_iter()
         .map(|pattern| pattern.0)
         .collect()
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum Token {
-    Num(i32),
-    Op(String),
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct Tokens {
-    pub tokens: Vec<Token>,
-}
-impl Tokens {
-    pub fn pop(&mut self) -> Option<Token> {
-        self.tokens.reverse();
-        let token = self.tokens.pop();
-        self.tokens.reverse();
-        token
-    }
-    pub fn consume(&mut self, ty: &str) -> Result<Token, String> {
-        let token = match self.pop() {
-            Some(token) => token,
-            None => return Err("There is no token.".to_string()),
-        };
-        match token {
-            Token::Num(_) => {
-                if ty == "Num" {
-                    return Ok(token);
-                }
-            }
-            Token::Op(_) => {
-                if ty == "Op" {
-                    return Ok(token);
-                }
-            }
-        }
-        Err("Token type does not match the expected type.".to_string())
-    }
 }
