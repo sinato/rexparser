@@ -28,33 +28,11 @@ struct TokenNode {
 }
 
 fn parse(mut tokens: Tokens) -> Node {
-    let term1 = match tokens.consume("Num") {
-        Ok(token) => Box::new(Node::Token(TokenNode { token })),
+    let mut lhs = match tokens.consume("Num") {
+        Ok(token) => Node::Token(TokenNode { token }),
         Err(msg) => panic!(msg),
     };
-    let op1 = match tokens.consume("Op") {
-        Ok(token) => token,
-        Err(msg) => panic!(msg),
-    };
-    let term2 = match tokens.consume("Num") {
-        Ok(token) => Box::new(Node::Token(TokenNode { token })),
-        Err(msg) => panic!(msg),
-    };
-    let lhs = match op1 {
-        Token::Op(op) => match op.as_ref() {
-            "+" => Node::Add(AddNode {
-                lhs: term1,
-                rhs: term2,
-            }),
-            "*" => Node::Mul(MulNode {
-                lhs: term1,
-                rhs: term2,
-            }),
-            _ => panic!(),
-        },
-        _ => panic!(),
-    };
-    if let Ok(Token::Op(_)) = tokens.expect("Op") {
+    while let Ok(Token::Op(_)) = tokens.expect("Op") {
         let op2 = match tokens.consume("Op") {
             Ok(token) => token,
             Err(msg) => panic!(msg),
@@ -63,7 +41,7 @@ fn parse(mut tokens: Tokens) -> Node {
             Ok(token) => Box::new(Node::Token(TokenNode { token })),
             Err(msg) => panic!(msg),
         };
-        match op2 {
+        lhs = match op2 {
             Token::Op(op) => match op.as_ref() {
                 "+" => Node::Add(AddNode {
                     lhs: Box::new(lhs),
@@ -76,15 +54,14 @@ fn parse(mut tokens: Tokens) -> Node {
                 _ => panic!(),
             },
             _ => panic!(),
-        }
-    } else {
-        lhs
+        };
     }
+    lhs
 }
 
 /// expression := num op num (op num)?
 fn main() {
-    let input = String::from("1 * 2 + 3");
+    let input = String::from("1 * 2 + 3 * 4");
     let lexer = lexer::Lexer::new();
     let tokens = lexer.lex(input);
     println!("tokens: {:?}", tokens);
@@ -107,41 +84,63 @@ mod tests {
             token: Token::Num(num),
         })
     }
-    fn get_add_exp(num1: i32, num2: i32) -> Node {
+    fn get_add_exp(lhs: Node, rhs: Node) -> Node {
         Node::Add(AddNode {
-            lhs: Box::new(get_num(num1)),
-            rhs: Box::new(get_num(num2)),
+            lhs: Box::new(lhs),
+            rhs: Box::new(rhs),
         })
     }
-    fn get_mul_exp(num1: i32, num2: i32) -> Node {
+    fn get_mul_exp(lhs: Node, rhs: Node) -> Node {
         Node::Mul(MulNode {
-            lhs: Box::new(get_num(num1)),
-            rhs: Box::new(get_num(num2)),
+            lhs: Box::new(lhs),
+            rhs: Box::new(rhs),
         })
     }
 
     #[test]
     fn test_add() {
         let actual = run(String::from("1 + 2"));
-        let expected = get_add_exp(1, 2);
+        let lhs = get_num(1);
+        let rhs = get_num(2);
+        let expected = get_add_exp(lhs, rhs);
         assert_eq!(actual, expected);
     }
 
     #[test]
     fn test_mul() {
         let actual = run(String::from("1 * 2"));
-        let expected = get_mul_exp(1, 2);
+        let lhs = get_num(1);
+        let rhs = get_num(2);
+        let expected = get_mul_exp(lhs, rhs);
         assert_eq!(actual, expected);
     }
 
     #[test]
     fn test_three_terms() {
         let actual = run(String::from("1 * 2 + 3"));
-        let lhs = get_mul_exp(1, 2);
-        let expected = Node::Add(AddNode {
-            lhs: Box::new(lhs),
-            rhs: Box::new(get_num(3)),
-        });
+        let lhs = get_num(1);
+        let rhs = get_num(2);
+
+        let lhs = get_mul_exp(lhs, rhs);
+        let rhs = get_num(3);
+
+        let expected = get_add_exp(lhs, rhs);
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_multi_terms() {
+        let actual = run(String::from("1 * 2 + 3 * 4"));
+        let lhs = get_num(1);
+        let rhs = get_num(2);
+
+        let lhs = get_mul_exp(lhs, rhs);
+        let rhs = get_num(3);
+
+        let lhs = get_add_exp(lhs, rhs);
+        let rhs = get_num(4);
+
+        let expected = get_mul_exp(lhs, rhs);
         assert_eq!(actual, expected);
     }
 }
