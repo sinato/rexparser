@@ -7,7 +7,7 @@ use token::{Token, Tokens};
 enum Node {
     Add(AddNode),
     Mul(MulNode),
-    Token(Token),
+    Token(TokenNode),
 }
 
 #[derive(Debug, PartialEq)]
@@ -22,9 +22,14 @@ struct MulNode {
     rhs: Box<Node>,
 }
 
+#[derive(Debug, PartialEq)]
+struct TokenNode {
+    token: Token,
+}
+
 fn parse(mut tokens: Tokens) -> Node {
     let term1 = match tokens.consume("Num") {
-        Ok(token) => token,
+        Ok(token) => Box::new(Node::Token(TokenNode { token })),
         Err(msg) => panic!(msg),
     };
     let op1 = match tokens.consume("Op") {
@@ -32,18 +37,18 @@ fn parse(mut tokens: Tokens) -> Node {
         Err(msg) => panic!(msg),
     };
     let term2 = match tokens.consume("Num") {
-        Ok(token) => token,
+        Ok(token) => Box::new(Node::Token(TokenNode { token })),
         Err(msg) => panic!(msg),
     };
     let lhs = match op1 {
         Token::Op(op) => match op.as_ref() {
             "+" => Node::Add(AddNode {
-                lhs: Box::new(Node::Token(term1)),
-                rhs: Box::new(Node::Token(term2)),
+                lhs: term1,
+                rhs: term2,
             }),
             "*" => Node::Mul(MulNode {
-                lhs: Box::new(Node::Token(term1)),
-                rhs: Box::new(Node::Token(term2)),
+                lhs: term1,
+                rhs: term2,
             }),
             _ => panic!(),
         },
@@ -55,18 +60,18 @@ fn parse(mut tokens: Tokens) -> Node {
             Err(msg) => panic!(msg),
         };
         let term3 = match tokens.consume("Num") {
-            Ok(token) => token,
+            Ok(token) => Box::new(Node::Token(TokenNode { token })),
             Err(msg) => panic!(msg),
         };
         match op2 {
             Token::Op(op) => match op.as_ref() {
                 "+" => Node::Add(AddNode {
                     lhs: Box::new(lhs),
-                    rhs: Box::new(Node::Token(term3)),
+                    rhs: term3,
                 }),
                 "*" => Node::Mul(MulNode {
                     lhs: Box::new(lhs),
-                    rhs: Box::new(Node::Token(term3)),
+                    rhs: term3,
                 }),
                 _ => panic!(),
             },
@@ -98,7 +103,9 @@ mod tests {
     }
 
     fn get_num(num: i32) -> Node {
-        Node::Token(Token::Num(num))
+        Node::Token(TokenNode {
+            token: Token::Num(num),
+        })
     }
     fn get_add_exp(num1: i32, num2: i32) -> Node {
         Node::Add(AddNode {
