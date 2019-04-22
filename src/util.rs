@@ -1,4 +1,4 @@
-use crate::parser::Node;
+use crate::node::Node;
 
 pub fn print_node(node: Node, depth: u32, width: u32) {
     match node {

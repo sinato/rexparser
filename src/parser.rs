@@ -1,38 +1,26 @@
+use crate::node::{BinExpNode, Node, TokenNode};
 use crate::token::{Token, Tokens};
 use std::collections::HashMap;
 
-#[derive(Debug, PartialEq, Clone)]
-pub enum Node {
-    BinExp(BinExpNode),
-    Token(TokenNode),
+#[derive(Clone)]
+enum Associativity {
+    Right,
+    Left,
 }
 
-#[derive(Debug, PartialEq, Clone)]
-pub struct BinExpNode {
-    pub op: String,
-    pub lhs: Box<Node>,
-    pub rhs: Box<Node>,
-}
-#[derive(Debug, PartialEq, Clone)]
-pub struct TokenNode {
-    pub token: Token,
-}
-
-fn get_precedence(op: &String) -> u32 {
+fn get_precedence(op: &String) -> (u32, Associativity) {
     let mut map = HashMap::new();
-    map.insert("+", 12);
-    map.insert("*", 13);
+    map.insert("=", (2, Associativity::Right));
+    map.insert("+", (12, Associativity::Left));
+    map.insert("*", (13, Associativity::Left));
     let op: &str = &op;
-    map[op]
+    let val = map[op].clone();
+    val
 }
 
 pub fn parse_entry(mut tokens: Tokens) -> Node {
-    let lhs = match tokens.consume("Num") {
-        Ok(token) => Node::Token(TokenNode { token }),
-        Err(msg) => panic!(msg),
-    };
-    if let Ok(Token::Op(op)) = tokens.expect("Op") {
-        println!("entry op: {:?}", op);
+    let lhs = Node::Token(TokenNode::from_consume(&mut tokens));
+    if let Ok(_) = tokens.expect("Op") {
         parse(lhs, &mut tokens)
     } else {
         lhs
@@ -41,23 +29,26 @@ pub fn parse_entry(mut tokens: Tokens) -> Node {
 
 pub fn parse(mut lhs: Node, tokens: &mut Tokens) -> Node {
     while let Ok(Token::Op(op)) = tokens.expect("Op") {
-        let root_precedence = get_precedence(&op);
-        let op = match tokens.consume("Op") {
-            Ok(token) => match token {
-                Token::Op(op) => op,
-                _ => panic!("Unexptected pattern."),
-            },
+        let (root_precedence, root_associativity) = get_precedence(&op);
+        let op = match tokens.consume_op() {
+            Ok(op) => op,
             Err(msg) => panic!(msg),
         };
-
-        let mut rhs = match tokens.consume("Num") {
-            Ok(token) => Node::Token(TokenNode { token }),
-            Err(msg) => panic!(msg),
-        };
+        let mut rhs = Node::Token(TokenNode::from_consume(tokens));
         if let Ok(Token::Op(op2)) = tokens.expect("Op") {
-            let precedence = get_precedence(&op2);
-            if root_precedence < precedence {
-                rhs = parse(rhs, tokens);
+            let (precedence, _associativity) = get_precedence(&op2);
+
+            match root_associativity {
+                Associativity::Right => {
+                    if root_precedence <= precedence {
+                        rhs = parse(rhs, tokens);
+                    }
+                }
+                Associativity::Left => {
+                    if root_precedence < precedence {
+                        rhs = parse(rhs, tokens);
+                    }
+                }
             }
         }
         lhs = Node::BinExp(BinExpNode {
@@ -73,16 +64,21 @@ pub fn parse(mut lhs: Node, tokens: &mut Tokens) -> Node {
 mod tests {
     use super::*;
     use crate::lexer;
+    use crate::util::print_node;
 
     fn run(input: String) -> Node {
         let lexer = lexer::Lexer::new();
         let tokens = lexer.lex(input);
         parse_entry(tokens)
     }
-
     fn get_num(num: i32) -> Node {
         Node::Token(TokenNode {
             token: Token::Num(num),
+        })
+    }
+    fn get_ide(ide: &str) -> Node {
+        Node::Token(TokenNode {
+            token: Token::Ide(String::from(ide)),
         })
     }
     fn get_bin_exp(op: &str, lhs: Node, rhs: Node) -> Node {
@@ -91,6 +87,13 @@ mod tests {
             lhs: Box::new(lhs),
             rhs: Box::new(rhs),
         })
+    }
+    #[allow(dead_code)]
+    fn show(actual: Node, expected: Node) {
+        println!("actual   ============");
+        print_node(actual, 0, 0);
+        println!("expected ============");
+        print_node(expected, 0, 0);
     }
 
     #[test]
@@ -151,6 +154,19 @@ mod tests {
         let rhs = get_bin_exp("+", rhs1, rhs2);
         let expected = get_bin_exp("+", lhs, rhs);
 
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_multi_terms_with_assign() {
+        let actual = run(String::from("a = b = 1 + 2 * 3 + 4"));
+        // expect: a = (b = ((1 + (2 * 3)) + 4)) but... -> TODO
+        let lhs = get_ide("a");
+        let rhs0 = get_bin_exp("*", get_num(2), get_num(3));
+        let rhs1 = get_bin_exp("+", get_num(1), rhs0);
+        let rhs2 = get_bin_exp("+", rhs1, get_num(4));
+        let rhs = get_bin_exp("=", get_ide("b"), rhs2);
+        let expected = get_bin_exp("=", lhs, rhs);
         assert_eq!(actual, expected);
     }
 }

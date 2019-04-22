@@ -10,7 +10,11 @@ pub struct Lexer {
 impl Lexer {
     // static constructor
     pub fn new() -> Lexer {
-        let token_patterns = vec![("NUM", r"\d+(\.\d)*"), ("OP", r"[\+\*]")];
+        let token_patterns = vec![
+            ("NUM", r"\d+(\.\d)*"),
+            ("OP", r"[\+\*=]"),
+            ("IDE", r"[a-z]+"),
+        ];
         let re = make_regex(&token_patterns);
         let names = get_names(&token_patterns);
         let re = Regex::new(&re).expect("something went wrong making the regex");
@@ -36,6 +40,7 @@ impl Lexer {
                         .expect("something went wrong parsing a number"),
                 )),
                 "OP" => tokens.push(Token::Op(val)),
+                "IDE" => tokens.push(Token::Ide(val)),
                 _ => panic!("This is not an expected panic"),
             }
         }

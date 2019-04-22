@@ -2,12 +2,14 @@
 pub enum Token {
     Num(i32),
     Op(String),
+    Ide(String),
 }
 impl Token {
     pub fn print(&self) {
         match self {
             Token::Num(num) => print!("{}", num),
             Token::Op(op) => print!("{}", op),
+            Token::Ide(ide) => print!("{}", ide),
         }
     }
 }
@@ -23,24 +25,15 @@ impl Tokens {
         self.tokens.reverse();
         token
     }
-    pub fn consume(&mut self, ty: &str) -> Result<Token, String> {
+    pub fn consume_op(&mut self) -> Result<String, String> {
         let token = match self.pop() {
             Some(token) => token,
-            None => return Err("There is no token.".to_string()),
+            None => return Err("Expect an operator, but there is no token.".to_string()),
         };
         match token {
-            Token::Num(_) => {
-                if ty == "Num" {
-                    return Ok(token);
-                }
-            }
-            Token::Op(_) => {
-                if ty == "Op" {
-                    return Ok(token);
-                }
-            }
+            Token::Op(operator) => return Ok(operator),
+            _ => return Err("Expect an operator, but not found.".to_string()),
         }
-        Err("Token type does not match the expected type.".to_string())
     }
     pub fn expect(&self, ty: &str) -> Result<Token, String> {
         let mut tokens = self.clone();
@@ -56,6 +49,11 @@ impl Tokens {
             }
             Token::Op(_) => {
                 if ty == "Op" {
+                    return Ok(token);
+                }
+            }
+            Token::Ide(_) => {
+                if ty == "Ide" {
                     return Ok(token);
                 }
             }
