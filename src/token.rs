@@ -3,6 +3,14 @@ pub enum Token {
     Num(i32),
     Op(String),
 }
+impl Token {
+    pub fn print(&self) {
+        match self {
+            Token::Num(num) => print!("{}", num),
+            Token::Op(op) => print!("{}", op),
+        }
+    }
+}
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Tokens {
