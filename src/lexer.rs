@@ -1,18 +1,34 @@
+use crate::token::{Associativity, Property, Token, Tokens};
 use log::debug;
 use regex::Regex;
-
-use crate::token::{Token, Tokens};
+use std::collections::HashMap;
 
 pub struct Lexer {
     re: Regex,
     names: Vec<&'static str>,
 }
+
+pub fn get_property(op: &String) -> Property {
+    let mut map = HashMap::new();
+    map.insert("=", (2, Associativity::Right));
+    map.insert("+", (12, Associativity::Left));
+    map.insert("*", (13, Associativity::Left));
+    map.insert("++", (16, Associativity::Left));
+    let op: &str = &op;
+    let (precedence, associativity): (u32, Associativity) = map[op].clone();
+    Property {
+        precedence,
+        associativity,
+    }
+}
+
 impl Lexer {
     // static constructor
     pub fn new() -> Lexer {
         let token_patterns = vec![
-            ("NUM", r"\d+(\.\d)*"),
-            ("OP", r"[\+\*=]"),
+            ("NUM", r"(\d+(\.\d)*)"),
+            ("SUFFIXOP", r"\+\+"),
+            ("OP", r"(\+|\*|=)"),
             ("IDE", r"[a-z]+"),
         ];
         let re = make_regex(&token_patterns);
@@ -39,7 +55,8 @@ impl Lexer {
                     val.parse::<i32>()
                         .expect("something went wrong parsing a number"),
                 )),
-                "OP" => tokens.push(Token::Op(val)),
+                "SUFFIXOP" => tokens.push(Token::SuffixOp(val.clone(), get_property(&val))),
+                "OP" => tokens.push(Token::Op(val.clone(), get_property(&val))),
                 "IDE" => tokens.push(Token::Ide(val)),
                 _ => panic!("This is not an expected panic"),
             }
