@@ -1,4 +1,4 @@
-use crate::token::Token;
+use crate::lexer::token::Token;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Nodes {

@@ -1,4 +1,4 @@
-use crate::token::{Associativity, Property, Token, Tokens};
+use crate::lexer::token::{Associativity, Property, Token, Tokens};
 use log::debug;
 use regex::Regex;
 use std::collections::HashMap;

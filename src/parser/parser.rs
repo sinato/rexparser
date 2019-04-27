@@ -1,5 +1,5 @@
-use crate::node::{BinExpNode, Node, Nodes, SuffixNode, TokenNode};
-use crate::token::{Associativity, Token, Tokens};
+use crate::lexer::token::{Associativity, Token, Tokens};
+use crate::parser::node::{BinExpNode, Node, Nodes, SuffixNode, TokenNode};
 
 pub fn prepare_nodes(mut tokens: Tokens) -> Nodes {
     let mut nodes: Vec<Node> = Vec::new();
@@ -90,7 +90,7 @@ pub fn parse(mut lhs: Node, nodes: &mut Nodes, min_precedence: u32) -> Node {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::lexer;
+    use crate::lexer::lexer;
     use crate::util::print_node;
 
     fn run(input: String) -> Node {

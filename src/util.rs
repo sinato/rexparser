@@ -1,4 +1,4 @@
-use crate::node::Node;
+use crate::parser::node::Node;
 
 fn print_dash(l: usize) {
     print!(" ");
