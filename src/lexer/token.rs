@@ -47,4 +47,8 @@ impl Tokens {
         self.tokens.reverse();
         token
     }
+    pub fn peek(&self) -> Option<Token> {
+        let mut tokens = self.clone();
+        tokens.pop()
+    }
 }

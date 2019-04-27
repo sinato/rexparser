@@ -1,87 +1,81 @@
 use crate::lexer::token::{Associativity, Token, Tokens};
-use crate::parser::node::{BinExpNode, Node, Nodes, SuffixNode, TokenNode};
+use crate::parser::node::{BinExpNode, Node, SuffixNode, TokenNode};
 
-pub fn prepare_nodes(mut tokens: Tokens) -> Nodes {
-    let mut nodes: Vec<Node> = Vec::new();
-    while let Some(token) = tokens.pop() {
-        let node = match token.clone() {
-            Token::SuffixOp(_, _) => {
-                let node = match nodes.pop() {
-                    Some(node) => node,
-                    None => panic!("Expect an assinable."),
-                };
-                Node::Suffix(SuffixNode {
-                    suffix: TokenNode { token },
-                    node: Box::new(node),
-                })
-            }
-            _ => Node::Token(TokenNode { token }),
-        };
-        nodes.push(node);
+pub fn toplevel(mut tokens: Tokens) -> Node {
+    expression(&mut tokens)
+}
+
+pub fn expression(tokens: &mut Tokens) -> Node {
+    let lhs = primary(tokens);
+    binary_expression(lhs, tokens, 0)
+}
+
+fn primary(tokens: &mut Tokens) -> Node {
+    let lhs = Node::Token(TokenNode {
+        token: tokens.pop().unwrap(),
+    });
+    match tokens.peek() {
+        Some(token) => match token {
+            Token::SuffixOp(_, _) => suffix(lhs, tokens),
+            Token::Op(_, _) => lhs,
+            _ => panic!("Expect an operator."),
+        },
+        None => lhs,
     }
-    Nodes { nodes }
 }
 
-pub fn toplevel(tokens: Tokens) -> Node {
-    let nodes = prepare_nodes(tokens);
-    parse_entry(nodes)
+fn suffix(lhs: Node, tokens: &mut Tokens) -> Node {
+    let suffix = TokenNode {
+        token: tokens.pop().unwrap(),
+    };
+    Node::Suffix(SuffixNode {
+        suffix,
+        node: Box::new(lhs),
+    })
 }
 
-pub fn parse_entry(mut nodes: Nodes) -> Node {
-    let lhs = nodes.pop().unwrap();
-    parse(lhs, &mut nodes, 0)
-}
-
-pub fn parse(mut lhs: Node, nodes: &mut Nodes, min_precedence: u32) -> Node {
-    while let Some(node) = nodes.peek() {
+pub fn binary_expression(mut lhs: Node, tokens: &mut Tokens, min_precedence: u32) -> Node {
+    while let Some(token) = tokens.peek() {
         println!("======================");
-        println!("{:?}", node);
+        println!("{:?}", token);
         println!("======================");
-        match node {
-            Node::BinExp(_) | Node::Suffix(_) => panic!("Invalid expression."),
-            Node::Token(node) => match node.token {
-                Token::Op(op, property) => {
-                    let (root_precedence, root_associativity) =
-                        (property.clone().precedence, property.clone().associativity);
-                    if root_precedence < min_precedence {
-                        break;
-                    }
-                    nodes.pop(); // consume op
-                    let op = TokenNode {
-                        token: Token::Op(op, property),
-                    };
-                    // TODO: impl error handling
-                    let mut rhs = nodes.pop().unwrap(); // read num/identifier
-                    while let Some(Node::Token(TokenNode {
-                        token: Token::Op(_, property2),
-                    })) = nodes.peek()
-                    {
-                        let (precedence, _associativity) =
-                            (property2.precedence, property2.associativity);
-                        match root_associativity {
-                            Associativity::Right => {
-                                if root_precedence > precedence {
-                                    break;
-                                }
-                            }
-                            Associativity::Left => {
-                                if root_precedence >= precedence {
-                                    break;
-                                }
+        match token {
+            Token::Op(op, property) => {
+                let (root_precedence, root_associativity) =
+                    (property.clone().precedence, property.clone().associativity);
+                if root_precedence < min_precedence {
+                    break;
+                }
+                tokens.pop(); // consume op
+                let op = TokenNode {
+                    token: Token::Op(op, property),
+                };
+                // TODO: impl error handling
+                let mut rhs = primary(tokens);
+                while let Some(Token::Op(_, property2)) = tokens.peek() {
+                    let (precedence, _associativity) =
+                        (property2.precedence, property2.associativity);
+                    match root_associativity {
+                        Associativity::Right => {
+                            if root_precedence > precedence {
+                                break;
                             }
                         }
-                        rhs = parse(rhs, nodes, precedence)
+                        Associativity::Left => {
+                            if root_precedence >= precedence {
+                                break;
+                            }
+                        }
                     }
-                    lhs = Node::BinExp(BinExpNode {
-                        op,
-                        lhs: Box::new(lhs),
-                        rhs: Box::new(rhs),
-                    });
+                    rhs = binary_expression(rhs, tokens, precedence)
                 }
-                Token::Ide(_) | Token::Num(_) | Token::SuffixOp(_, _) => {
-                    panic!("Invalid expression.")
-                }
-            },
+                lhs = Node::BinExp(BinExpNode {
+                    op,
+                    lhs: Box::new(lhs),
+                    rhs: Box::new(rhs),
+                });
+            }
+            Token::Ide(_) | Token::Num(_) | Token::SuffixOp(_, _) => panic!("Invalid expression."),
         }
     }
     lhs
@@ -222,6 +216,20 @@ mod tests {
         // expect: a++
         let lhs = get_ide("a");
         let expected = get_suffix_exp("++", lhs);
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_all() {
+        let actual = run(String::from("a = b = 1 + 2 * 3++ + 4"));
+        // expect: a = (b = ((1 + (2 * 3)) + 4))
+        let lhs = get_ide("a");
+        let rhs_with_suffix = get_suffix_exp("++", get_num(3));
+        let rhs0 = get_bin_exp("*", get_num(2), rhs_with_suffix);
+        let rhs1 = get_bin_exp("+", get_num(1), rhs0);
+        let rhs2 = get_bin_exp("+", rhs1, get_num(4));
+        let rhs = get_bin_exp("=", get_ide("b"), rhs2);
+        let expected = get_bin_exp("=", lhs, rhs);
         assert_eq!(actual, expected);
     }
 }
