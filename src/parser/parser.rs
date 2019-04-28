@@ -1,5 +1,7 @@
 use crate::lexer::token::{Associativity, Token, Tokens};
-use crate::parser::node::{ArrayIndexNode, BinExpNode, Node, SuffixNode, TokenNode};
+use crate::parser::node::{
+    ArrayIndexNode, BinExpNode, FunctionCallNode, Node, SuffixNode, TokenNode,
+};
 
 pub fn toplevel(mut tokens: Tokens) -> Node {
     expression(&mut tokens)
@@ -40,6 +42,28 @@ fn suffix(lhs: Node, tokens: &mut Tokens) -> Node {
                     array: Box::new(lhs),
                     index: Box::new(index),
                 })
+            }
+            "(" => {
+                if let Node::Token(token_node) = lhs {
+                    let mut parameters: Vec<Box<Node>> = Vec::new();
+                    loop {
+                        if let Some(Token::ParenE) = tokens.peek() {
+                            tokens.pop();
+                            break;
+                        }
+                        let parameter = expression(tokens);
+                        parameters.push(Box::new(parameter));
+                        if let Some(Token::Comma) = tokens.peek() {
+                            tokens.pop();
+                        }
+                    }
+                    Node::FunctionCall(FunctionCallNode {
+                        identifier: token_node,
+                        parameters,
+                    })
+                } else {
+                    panic!("Expect a token node as lhs.")
+                }
             }
             _ => panic!(),
         },
@@ -145,6 +169,12 @@ mod tests {
             index: Box::new(index),
         })
     }
+    fn get_function_call_exp(identifier: TokenNode, parameters: Vec<Box<Node>>) -> Node {
+        Node::FunctionCall(FunctionCallNode {
+            identifier,
+            parameters,
+        })
+    }
     #[allow(dead_code)]
     fn show(actual: Node, expected: Node) {
         println!("actual   ============");
@@ -247,6 +277,37 @@ mod tests {
         assert_eq!(actual, expected);
     }
 
+    #[test]
+    fn test_function_call() {
+        let actual = run(String::from("a = func(1, 2, 3) + 5"));
+        let lhs = get_ide("a");
+        let identifier = TokenNode {
+            token: Token::Ide("func".to_string()),
+        };
+        let parameters = vec![
+            Box::new(get_num(1)),
+            Box::new(get_num(2)),
+            Box::new(get_num(3)),
+        ];
+        let function_call = get_function_call_exp(identifier, parameters);
+        let rhs = get_bin_exp("+", function_call, get_num(5));
+        let expected = get_bin_exp("=", lhs, rhs);
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_function_call_without_args() {
+        let actual = run(String::from("a = func() + 5"));
+        let lhs = get_ide("a");
+        let identifier = TokenNode {
+            token: Token::Ide("func".to_string()),
+        };
+        let parameters = vec![];
+        let function_call = get_function_call_exp(identifier, parameters);
+        let rhs = get_bin_exp("+", function_call, get_num(5));
+        let expected = get_bin_exp("=", lhs, rhs);
+        assert_eq!(actual, expected);
+    }
     #[test]
     fn test_all() {
         let actual = run(String::from("a = b = 1 + 2 * 3++ + 4"));
