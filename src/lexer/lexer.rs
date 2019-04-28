@@ -14,6 +14,7 @@ pub fn get_property(op: &String) -> Property {
     map.insert("+", (12, Associativity::Left));
     map.insert("*", (13, Associativity::Left));
     map.insert("++", (16, Associativity::Left));
+    map.insert("[", (16, Associativity::Left));
     let op: &str = &op;
     let (precedence, associativity): (u32, Associativity) = map[op].clone();
     Property {
@@ -27,7 +28,8 @@ impl Lexer {
     pub fn new() -> Lexer {
         let token_patterns = vec![
             ("NUM", r"(\d+(\.\d)*)"),
-            ("SUFFIXOP", r"\+\+"),
+            ("SQUARE_E", r"\]"),
+            ("SUFFIXOP", r"(\+\+|\[)"),
             ("OP", r"(\+|\*|=)"),
             ("IDE", r"[a-z]+"),
         ];
@@ -55,6 +57,8 @@ impl Lexer {
                     val.parse::<i32>()
                         .expect("something went wrong parsing a number"),
                 )),
+                "SQUARE_S" => tokens.push(Token::SquareS),
+                "SQUARE_E" => tokens.push(Token::SquareE),
                 "SUFFIXOP" => tokens.push(Token::SuffixOp(val.clone(), get_property(&val))),
                 "OP" => tokens.push(Token::Op(val.clone(), get_property(&val))),
                 "IDE" => tokens.push(Token::Ide(val)),

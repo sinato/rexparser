@@ -1,5 +1,5 @@
 use crate::lexer::token::{Associativity, Token, Tokens};
-use crate::parser::node::{BinExpNode, Node, SuffixNode, TokenNode};
+use crate::parser::node::{ArrayIndexNode, BinExpNode, Node, SuffixNode, TokenNode};
 
 pub fn toplevel(mut tokens: Tokens) -> Node {
     expression(&mut tokens)
@@ -14,31 +14,41 @@ fn primary(tokens: &mut Tokens) -> Node {
     let lhs = Node::Token(TokenNode {
         token: tokens.pop().unwrap(),
     });
-    match tokens.peek() {
+    let lhs = match tokens.peek() {
         Some(token) => match token {
             Token::SuffixOp(_, _) => suffix(lhs, tokens),
             Token::Op(_, _) => lhs,
-            _ => panic!("Expect an operator."),
+            _ => lhs,
         },
         None => lhs,
-    }
+    };
+    lhs
 }
 
 fn suffix(lhs: Node, tokens: &mut Tokens) -> Node {
-    let suffix = TokenNode {
-        token: tokens.pop().unwrap(),
-    };
-    Node::Suffix(SuffixNode {
-        suffix,
-        node: Box::new(lhs),
-    })
+    match tokens.pop().unwrap() {
+        Token::SuffixOp(suffix, property) => match suffix.as_ref() {
+            "++" => Node::Suffix(SuffixNode {
+                suffix: TokenNode {
+                    token: Token::SuffixOp(suffix, property),
+                },
+                node: Box::new(lhs),
+            }),
+            "[" => {
+                let index = expression(tokens);
+                Node::ArrayIndex(ArrayIndexNode {
+                    array: Box::new(lhs),
+                    index: Box::new(index),
+                })
+            }
+            _ => panic!(),
+        },
+        _ => panic!("Expect a suffix operator."),
+    }
 }
 
 pub fn binary_expression(mut lhs: Node, tokens: &mut Tokens, min_precedence: u32) -> Node {
     while let Some(token) = tokens.peek() {
-        println!("======================");
-        println!("{:?}", token);
-        println!("======================");
         match token {
             Token::Op(op, property) => {
                 let (root_precedence, root_associativity) =
@@ -75,7 +85,7 @@ pub fn binary_expression(mut lhs: Node, tokens: &mut Tokens, min_precedence: u32
                     rhs: Box::new(rhs),
                 });
             }
-            Token::Ide(_) | Token::Num(_) | Token::SuffixOp(_, _) => panic!("Invalid expression."),
+            _ => break,
         }
     }
     lhs
@@ -127,6 +137,12 @@ mod tests {
         Node::Suffix(SuffixNode {
             suffix: get_suffix(suffix),
             node: Box::new(lhs),
+        })
+    }
+    fn get_array_index_exp(array: Node, index: Node) -> Node {
+        Node::ArrayIndex(ArrayIndexNode {
+            array: Box::new(array),
+            index: Box::new(index),
         })
     }
     #[allow(dead_code)]
@@ -216,6 +232,18 @@ mod tests {
         // expect: a++
         let lhs = get_ide("a");
         let expected = get_suffix_exp("++", lhs);
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_array_index() {
+        let actual = run(String::from("a = b[1 + 2]"));
+        // expect: a = (b[(1 + 2)])
+        let lhs = get_ide("a");
+        let index = get_bin_exp("+", get_num(1), get_num(2));
+        let array = get_ide("b");
+        let rhs = get_array_index_exp(array, index);
+        let expected = get_bin_exp("=", lhs, rhs);
         assert_eq!(actual, expected);
     }
 

@@ -9,6 +9,7 @@ pub struct Nodes {
 pub enum Node {
     BinExp(BinExpNode),
     Suffix(SuffixNode),
+    ArrayIndex(ArrayIndexNode),
     Token(TokenNode),
 }
 
@@ -17,6 +18,12 @@ pub struct BinExpNode {
     pub op: TokenNode,
     pub lhs: Box<Node>,
     pub rhs: Box<Node>,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct ArrayIndexNode {
+    pub array: Box<Node>,
+    pub index: Box<Node>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -36,6 +43,8 @@ impl std::fmt::Display for TokenNode {
             Token::SuffixOp(suffix, _) => write!(f, "{}", suffix),
             Token::Ide(ide) => write!(f, "{}", ide),
             Token::Num(num) => write!(f, "{}", num),
+            Token::SquareS => write!(f, "["),
+            Token::SquareE => write!(f, "]"),
         }
     }
 }

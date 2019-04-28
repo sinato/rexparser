@@ -16,6 +16,8 @@ pub enum Token {
     Op(String, Property),
     SuffixOp(String, Property),
     Ide(String),
+    SquareS,
+    SquareE,
 }
 impl Token {
     pub fn print(&self) {
@@ -24,6 +26,8 @@ impl Token {
             Token::Op(op, _) => print!("{}", op),
             Token::SuffixOp(op, _) => print!("{}", op),
             Token::Ide(ide) => print!("{}", ide),
+            Token::SquareS => print!("["),
+            Token::SquareE => print!("]"),
         }
     }
     pub fn get_len(&self) -> usize {
@@ -32,6 +36,7 @@ impl Token {
             Token::Op(op, _) => op.len(),
             Token::SuffixOp(op, _) => op.len(),
             Token::Ide(ide) => ide.len(),
+            _ => panic!("this kind of token does not have the length."),
         }
     }
 }
