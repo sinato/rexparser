@@ -8,6 +8,7 @@ pub struct Nodes {
 #[derive(Debug, PartialEq, Clone)]
 pub enum Node {
     BinExp(BinExpNode),
+    TernaryExp(TernaryExpNode),
     Suffix(SuffixNode),
     ArrayIndex(ArrayIndexNode),
     FunctionCall(FunctionCallNode),
@@ -17,6 +18,13 @@ pub enum Node {
 #[derive(Debug, PartialEq, Clone)]
 pub struct BinExpNode {
     pub op: TokenNode,
+    pub lhs: Box<Node>,
+    pub rhs: Box<Node>,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct TernaryExpNode {
+    pub condition: Box<Node>,
     pub lhs: Box<Node>,
     pub rhs: Box<Node>,
 }
@@ -45,14 +53,6 @@ pub struct TokenNode {
 }
 impl std::fmt::Display for TokenNode {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self.token.clone() {
-            Token::Op(op, _) => write!(f, "{}", op),
-            Token::SuffixOp(suffix, _) => write!(f, "{}", suffix),
-            Token::Ide(ide) => write!(f, "{}", ide),
-            Token::Num(num) => write!(f, "{}", num),
-            Token::SquareE => write!(f, "]"),
-            Token::ParenE => write!(f, "]"),
-            Token::Comma => write!(f, ","),
-        }
+        write!(f, "{}", self.token)
     }
 }

@@ -29,6 +29,8 @@ impl Lexer {
     pub fn new() -> Lexer {
         let token_patterns = vec![
             ("COMMA", r","),
+            ("COLON", r":"),
+            ("QUESTION", r"\?"),
             ("NUM", r"(\d+(\.\d)*)"),
             ("SQUARE_E", r"\]"),
             ("PAREN_E", r"\)"),
@@ -57,6 +59,8 @@ impl Lexer {
             }
             match typ.as_ref() {
                 "COMMA" => tokens.push(Token::Comma),
+                "COLON" => tokens.push(Token::Colon),
+                "QUESTION" => tokens.push(Token::Question),
                 "NUM" => tokens.push(Token::Num(
                     val.parse::<i32>()
                         .expect("something went wrong parsing a number"),

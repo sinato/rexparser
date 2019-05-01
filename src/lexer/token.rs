@@ -19,19 +19,10 @@ pub enum Token {
     SquareE,
     ParenE,
     Comma,
+    Colon,
+    Question,
 }
 impl Token {
-    pub fn print(&self) {
-        match self {
-            Token::Num(num) => print!("{}", num),
-            Token::Op(op, _) => print!("{}", op),
-            Token::SuffixOp(op, _) => print!("{}", op),
-            Token::Ide(ide) => print!("{}", ide),
-            Token::SquareE => print!("]"),
-            Token::ParenE => print!(")"),
-            Token::Comma => print!(","),
-        }
-    }
     pub fn get_len(&self) -> usize {
         match self {
             Token::Num(num) => num.to_string().len(),
@@ -39,6 +30,21 @@ impl Token {
             Token::SuffixOp(op, _) => op.len(),
             Token::Ide(ide) => ide.len(),
             _ => panic!("this kind of token does not have the length."),
+        }
+    }
+}
+impl std::fmt::Display for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Token::Num(num) => write!(f, "{}", num),
+            Token::Op(op, _) => write!(f, "{}", op),
+            Token::SuffixOp(op, _) => write!(f, "{}", op),
+            Token::Ide(ide) => write!(f, "{}", ide),
+            Token::SquareE => write!(f, "]"),
+            Token::ParenE => write!(f, ")"),
+            Token::Comma => write!(f, ","),
+            Token::Colon => write!(f, ":"),
+            Token::Question => write!(f, "?"),
         }
     }
 }

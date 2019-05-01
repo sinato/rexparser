@@ -1,6 +1,6 @@
 use crate::lexer::token::{Associativity, Token, Tokens};
 use crate::parser::node::{
-    ArrayIndexNode, BinExpNode, FunctionCallNode, Node, SuffixNode, TokenNode,
+    ArrayIndexNode, BinExpNode, FunctionCallNode, Node, SuffixNode, TernaryExpNode, TokenNode,
 };
 
 pub fn toplevel(mut tokens: Tokens) -> Node {
@@ -19,6 +19,19 @@ fn primary(tokens: &mut Tokens) -> Node {
     let lhs = match tokens.peek() {
         Some(token) => match token {
             Token::SuffixOp(_, _) => suffix(lhs, tokens),
+            Token::Question => {
+                // ternary expression
+                let condition = lhs.clone();
+                let _question = tokens.pop();
+                let ternary_lhs = expression(tokens);
+                let _colon = tokens.pop();
+                let ternary_rhs = expression(tokens);
+                Node::TernaryExp(TernaryExpNode {
+                    condition: Box::new(condition),
+                    lhs: Box::new(ternary_lhs),
+                    rhs: Box::new(ternary_rhs),
+                })
+            }
             Token::Op(_, _) => lhs,
             _ => lhs,
         },
@@ -175,6 +188,13 @@ mod tests {
             parameters,
         })
     }
+    fn get_ternary_exp(condition: Node, lhs: Node, rhs: Node) -> Node {
+        Node::TernaryExp(TernaryExpNode {
+            condition: Box::new(condition),
+            lhs: Box::new(lhs),
+            rhs: Box::new(rhs),
+        })
+    }
     #[allow(dead_code)]
     fn show(actual: Node, expected: Node) {
         println!("actual   ============");
@@ -308,6 +328,20 @@ mod tests {
         let expected = get_bin_exp("=", lhs, rhs);
         assert_eq!(actual, expected);
     }
+
+    #[test]
+    fn test_ternary() {
+        let actual = run(String::from("a = 1 ? 10 * 20 + 30 : b++"));
+        let lhs = get_ide("a");
+        let condition = get_num(1);
+        let ternary_lhs = get_bin_exp("*", get_num(10), get_num(20));
+        let ternary_lhs = get_bin_exp("+", ternary_lhs, get_num(30));
+        let ternary_rhs = get_suffix_exp("++", get_ide("b"));
+        let rhs = get_ternary_exp(condition, ternary_lhs, ternary_rhs);
+        let expected = get_bin_exp("=", lhs, rhs);
+        assert_eq!(actual, expected);
+    }
+
     #[test]
     fn test_all() {
         let actual = run(String::from("a = b = 1 + 2 * 3++ + 4"));
