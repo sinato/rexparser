@@ -39,6 +39,14 @@ fn primary(tokens: &mut Tokens) -> Node {
                 }
                 _ => panic!(),
             },
+            Token::SuffixOp(suffix) => match suffix.as_ref() {
+                "(" => {
+                    let node = expression(tokens);
+                    tokens.pop(); // consume ")"
+                    node
+                }
+                _ => panic!(),
+            },
             _ => panic!(format!("Expect a primary token, but this is {:?}", token)),
         },
         None => panic!(),
@@ -425,6 +433,15 @@ mod tests {
         let ternary_rhs = get_suffix_exp("++", get_ide("b"));
         let rhs = get_ternary_exp(condition, ternary_lhs, ternary_rhs);
         let expected = get_bin_exp("=", lhs, rhs);
+        assert_eq!(actual, expected);
+    }
+    #[test]
+    fn test_parenthesis() {
+        let actual = run(String::from("a = (1 * (2 + 3)) * 4"));
+        let rhs = get_bin_exp("+", get_num(2), get_num(3));
+        let rhs = get_bin_exp("*", get_num(1), rhs);
+        let rhs = get_bin_exp("*", rhs, get_num(4));
+        let expected = get_bin_exp("=", get_ide("a"), rhs);
         assert_eq!(actual, expected);
     }
 

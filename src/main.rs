@@ -10,7 +10,7 @@ use util::print_entry;
 fn main() {
     // let input = String::from("a = b = 1 + 2++ * 3 + 4++");
     // let input = String::from("-1 + +3");
-    let input = String::from("-1 + +++3");
+    let input = String::from("a = (1 * (2++ + -3)) * 4");
 
     let lexer = Lexer::new();
     let tokens = lexer.lex(input);
