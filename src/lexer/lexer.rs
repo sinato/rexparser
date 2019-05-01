@@ -14,7 +14,6 @@ pub fn get_property(op: &String) -> Property {
     map.insert("+", (12, Associativity::Left));
     map.insert("-", (12, Associativity::Left));
     map.insert("*", (13, Associativity::Left));
-    map.insert("++", (16, Associativity::Left));
     map.insert("[", (16, Associativity::Left));
     map.insert("(", (16, Associativity::Left));
     map.insert(",", (1, Associativity::Left));

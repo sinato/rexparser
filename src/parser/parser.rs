@@ -26,6 +26,19 @@ fn primary(tokens: &mut Tokens) -> Node {
                     node: Box::new(node),
                 })
             }
+            Token::Op(op, _property) => match op.as_ref() {
+                // treat as a sing operator
+                "+" | "-" => {
+                    let node = primary(tokens);
+                    Node::Prefix(PrefixNode {
+                        prefix: TokenNode {
+                            token: Token::PrefixOp(op),
+                        },
+                        node: Box::new(node),
+                    })
+                }
+                _ => panic!(),
+            },
             _ => panic!(format!("Expect a primary token, but this is {:?}", token)),
         },
         None => panic!(),
@@ -321,6 +334,17 @@ mod tests {
         let rhs = get_prefix_exp("++", get_ide("a"));
         let rhs = get_bin_exp("*", rhs, get_num(1));
         let rhs = get_bin_exp("+", rhs, get_num(2));
+        let expected = get_bin_exp("=", lhs, rhs);
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_sign_operator() {
+        let actual = run(String::from("a = +1 + -2"));
+        let lhs = get_ide("a");
+        let rhs1 = get_prefix_exp("+", get_num(1));
+        let rhs2 = get_prefix_exp("-", get_num(2));
+        let rhs = get_bin_exp("+", rhs1, rhs2);
         let expected = get_bin_exp("=", lhs, rhs);
         assert_eq!(actual, expected);
     }
