@@ -327,6 +327,17 @@ mod tests {
     }
 
     #[test]
+    fn test_commma() {
+        let actual = run(String::from("a = 1 + 2 * 3, 4 + 5"));
+        let lhs = get_bin_exp("*", get_num(2), get_num(3));
+        let lhs = get_bin_exp("+", get_num(1), lhs);
+        let lhs = get_bin_exp("=", get_ide("a"), lhs);
+        let rhs = get_bin_exp("+", get_num(4), get_num(5));
+        let expected = get_bin_exp(",", lhs, rhs);
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
     fn test_ternary() {
         let actual = run(String::from("a = 1 ? 10 * 20 + 30 : b++"));
         let lhs = get_ide("a");
