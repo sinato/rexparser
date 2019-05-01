@@ -1,5 +1,10 @@
 use crate::parser::node::Node;
 
+pub fn print_entry(node: Node) {
+    print_node(node, 0, 0);
+    print!("\n");
+}
+
 fn print_dash(l: usize) {
     print!(" ");
     for _ in 0..l {
@@ -15,6 +20,7 @@ pub fn print_node(node: Node, depth: u32, width: u32) {
             print!("{}", node.op);
             print_dash(default_dash_num - node.op.token.get_len());
             print_node(*node.lhs, depth + 1, width);
+            print!("\n");
             for _ in 0..depth {
                 print!("|       ");
             }
@@ -47,7 +53,6 @@ pub fn print_node(node: Node, depth: u32, width: u32) {
             print!("{}", "[]");
             print_dash(default_dash_num - 2);
             print_node(*node.index, depth + 1, width);
-            print!("\n");
         }
         Node::FunctionCall(node) => {
             print!("{}", node.identifier.token);
@@ -57,7 +62,7 @@ pub fn print_node(node: Node, depth: u32, width: u32) {
             print!("\n");
         }
         Node::Token(node) => {
-            println!("{}", node.token);
+            print!("{}", node.token);
         }
         Node::Empty => {}
     }

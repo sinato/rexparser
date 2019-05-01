@@ -22,7 +22,13 @@ fn primary(tokens: &mut Tokens) -> Node {
     };
     let lhs = match tokens.peek() {
         Some(token) => match token {
-            Token::SuffixOp(_, _) => suffix(lhs, tokens),
+            Token::SuffixOp(_, _) => {
+                let mut node = suffix(lhs, tokens);
+                while let Some(Token::SuffixOp(_, _)) = tokens.peek() {
+                    node = suffix(node, tokens);
+                }
+                node
+            }
             Token::Question => {
                 // ternary expression
                 let condition = lhs.clone();
@@ -55,10 +61,12 @@ fn suffix(lhs: Node, tokens: &mut Tokens) -> Node {
             }),
             "[" => {
                 let index = expression(tokens);
-                Node::ArrayIndex(ArrayIndexNode {
+                let array = Node::ArrayIndex(ArrayIndexNode {
                     array: Box::new(lhs),
                     index: Box::new(index),
-                })
+                });
+                tokens.pop(); // consume "["
+                array
             }
             "(" => {
                 if let Node::Token(token_node) = lhs {
@@ -293,6 +301,20 @@ mod tests {
         let index = get_bin_exp("+", get_num(1), get_num(2));
         let array = get_ide("b");
         let rhs = get_array_index_exp(array, index);
+        let expected = get_bin_exp("=", lhs, rhs);
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_array_multi() {
+        let actual = run(String::from("b = a[1][2][3]++ * 4 + 5"));
+        let lhs = get_ide("b");
+        let array = get_array_index_exp(get_ide("a"), get_num(1));
+        let array = get_array_index_exp(array, get_num(2));
+        let array = get_array_index_exp(array, get_num(3));
+        let array_with_suffix = get_suffix_exp("++", array);
+        let rhs = get_bin_exp("*", array_with_suffix, get_num(4));
+        let rhs = get_bin_exp("+", rhs, get_num(5));
         let expected = get_bin_exp("=", lhs, rhs);
         assert_eq!(actual, expected);
     }
