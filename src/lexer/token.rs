@@ -18,7 +18,6 @@ pub enum Token {
     Ide(String),
     SquareE,
     ParenE,
-    Comma,
     Colon,
     Question,
 }
@@ -42,7 +41,6 @@ impl std::fmt::Display for Token {
             Token::Ide(ide) => write!(f, "{}", ide),
             Token::SquareE => write!(f, "]"),
             Token::ParenE => write!(f, ")"),
-            Token::Comma => write!(f, ","),
             Token::Colon => write!(f, ":"),
             Token::Question => write!(f, "?"),
         }

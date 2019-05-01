@@ -50,29 +50,15 @@ pub fn print_node(node: Node, depth: u32, width: u32) {
             print!("\n");
         }
         Node::FunctionCall(node) => {
-            println!("{}", node.identifier.token);
+            print!("{}", node.identifier.token);
             print_dash(default_dash_num - node.identifier.token.get_len());
             print!("{}", "()");
-            let mut parameters = node.parameters;
-            parameters.reverse();
-            if let Some(parameter) = parameters.pop() {
-                print_dash(default_dash_num - 2);
-                print_node(*parameter, depth + 1, width);
-            }
-            if parameters.len() > 0 {
-                print!("\n");
-            }
-            while let Some(parameter) = parameters.pop() {
-                for _ in 0..depth + 1 {
-                    print!("|       ");
-                }
-                print!("└────── ");
-                print_node(*parameter, depth + 1, width);
-                print!("\n");
-            }
+            print_node(*node.parameters, depth + 1, width);
+            print!("\n");
         }
         Node::Token(node) => {
             println!("{}", node.token);
         }
+        Node::Empty => {}
     }
 }

@@ -13,6 +13,7 @@ pub enum Node {
     ArrayIndex(ArrayIndexNode),
     FunctionCall(FunctionCallNode),
     Token(TokenNode),
+    Empty,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -38,7 +39,7 @@ pub struct ArrayIndexNode {
 #[derive(Debug, PartialEq, Clone)]
 pub struct FunctionCallNode {
     pub identifier: TokenNode,
-    pub parameters: Vec<Box<Node>>,
+    pub parameters: Box<Node>,
 }
 
 #[derive(Debug, PartialEq, Clone)]

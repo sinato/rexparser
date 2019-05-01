@@ -16,6 +16,7 @@ pub fn get_property(op: &String) -> Property {
     map.insert("++", (16, Associativity::Left));
     map.insert("[", (16, Associativity::Left));
     map.insert("(", (16, Associativity::Left));
+    map.insert(",", (1, Associativity::Left));
     let op: &str = &op;
     let (precedence, associativity): (u32, Associativity) = map[op].clone();
     Property {
@@ -28,14 +29,13 @@ impl Lexer {
     // static constructor
     pub fn new() -> Lexer {
         let token_patterns = vec![
-            ("COMMA", r","),
             ("COLON", r":"),
             ("QUESTION", r"\?"),
             ("NUM", r"(\d+(\.\d)*)"),
             ("SQUARE_E", r"\]"),
             ("PAREN_E", r"\)"),
             ("SUFFIXOP", r"(\+\+|\[|\()"),
-            ("OP", r"(\+|\*|=)"),
+            ("OP", r"(\+|\*|=|,)"),
             ("IDE", r"[a-z]+"),
         ];
         let re = make_regex(&token_patterns);
@@ -58,7 +58,6 @@ impl Lexer {
                 }
             }
             match typ.as_ref() {
-                "COMMA" => tokens.push(Token::Comma),
                 "COLON" => tokens.push(Token::Colon),
                 "QUESTION" => tokens.push(Token::Question),
                 "NUM" => tokens.push(Token::Num(

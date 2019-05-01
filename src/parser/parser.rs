@@ -13,9 +13,13 @@ pub fn expression(tokens: &mut Tokens) -> Node {
 }
 
 fn primary(tokens: &mut Tokens) -> Node {
-    let lhs = Node::Token(TokenNode {
-        token: tokens.pop().unwrap(),
-    });
+    let lhs = match tokens.pop() {
+        Some(token) => match token {
+            Token::Ide(_) | Token::Num(_) => Node::Token(TokenNode { token }),
+            _ => panic!(format!("Expect a primary token, but this is {:?}", token)),
+        },
+        None => panic!(),
+    };
     let lhs = match tokens.peek() {
         Some(token) => match token {
             Token::SuffixOp(_, _) => suffix(lhs, tokens),
@@ -58,18 +62,14 @@ fn suffix(lhs: Node, tokens: &mut Tokens) -> Node {
             }
             "(" => {
                 if let Node::Token(token_node) = lhs {
-                    let mut parameters: Vec<Box<Node>> = Vec::new();
-                    loop {
-                        if let Some(Token::ParenE) = tokens.peek() {
-                            tokens.pop();
-                            break;
-                        }
-                        let parameter = expression(tokens);
-                        parameters.push(Box::new(parameter));
-                        if let Some(Token::Comma) = tokens.peek() {
-                            tokens.pop();
-                        }
-                    }
+                    let parameters = match tokens.peek() {
+                        Some(token) => match token {
+                            Token::ParenE => Box::new(Node::Empty),
+                            _ => Box::new(expression(tokens)),
+                        },
+                        None => panic!(),
+                    };
+                    tokens.pop(); // consume ParanE TODO: impl error handling
                     Node::FunctionCall(FunctionCallNode {
                         identifier: token_node,
                         parameters,
@@ -182,10 +182,10 @@ mod tests {
             index: Box::new(index),
         })
     }
-    fn get_function_call_exp(identifier: TokenNode, parameters: Vec<Box<Node>>) -> Node {
+    fn get_function_call_exp(identifier: TokenNode, parameters: Node) -> Node {
         Node::FunctionCall(FunctionCallNode {
             identifier,
-            parameters,
+            parameters: Box::new(parameters),
         })
     }
     fn get_ternary_exp(condition: Node, lhs: Node, rhs: Node) -> Node {
@@ -304,11 +304,8 @@ mod tests {
         let identifier = TokenNode {
             token: Token::Ide("func".to_string()),
         };
-        let parameters = vec![
-            Box::new(get_num(1)),
-            Box::new(get_num(2)),
-            Box::new(get_num(3)),
-        ];
+        let parameters = get_bin_exp(",", get_num(1), get_num(2));
+        let parameters = get_bin_exp(",", parameters, get_num(3));
         let function_call = get_function_call_exp(identifier, parameters);
         let rhs = get_bin_exp("+", function_call, get_num(5));
         let expected = get_bin_exp("=", lhs, rhs);
@@ -322,7 +319,7 @@ mod tests {
         let identifier = TokenNode {
             token: Token::Ide("func".to_string()),
         };
-        let parameters = vec![];
+        let parameters = Node::Empty;
         let function_call = get_function_call_exp(identifier, parameters);
         let rhs = get_bin_exp("+", function_call, get_num(5));
         let expected = get_bin_exp("=", lhs, rhs);
