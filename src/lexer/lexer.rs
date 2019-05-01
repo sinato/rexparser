@@ -70,11 +70,11 @@ impl Lexer {
                 "PAREN_E" => tokens.push(Token::ParenE),
                 "PREFIXOP" => {
                     let val = val.trim_start().to_string();
-                    tokens.push(Token::PrefixOp(val.clone(), get_property(&val)));
+                    tokens.push(Token::PrefixOp(val));
                 }
                 "SUFFIXOP" => {
                     let val = val.trim_end().to_string();
-                    tokens.push(Token::SuffixOp(val.clone(), get_property(&val)));
+                    tokens.push(Token::SuffixOp(val));
                 }
                 "OP" => {
                     let val = val.trim_end().to_string();

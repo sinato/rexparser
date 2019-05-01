@@ -17,11 +17,11 @@ fn primary(tokens: &mut Tokens) -> Node {
     let lhs = match tokens.pop() {
         Some(token) => match token {
             Token::Ide(_) | Token::Num(_) => Node::Token(TokenNode { token }),
-            Token::PrefixOp(prefix, property) => {
+            Token::PrefixOp(prefix) => {
                 let node = primary(tokens);
                 Node::Prefix(PrefixNode {
                     prefix: TokenNode {
-                        token: Token::PrefixOp(prefix, property),
+                        token: Token::PrefixOp(prefix),
                     },
                     node: Box::new(node),
                 })
@@ -32,9 +32,9 @@ fn primary(tokens: &mut Tokens) -> Node {
     };
     let lhs = match tokens.peek() {
         Some(token) => match token {
-            Token::SuffixOp(_, _) => {
+            Token::SuffixOp(_) => {
                 let mut node = suffix(lhs, tokens);
-                while let Some(Token::SuffixOp(_, _)) = tokens.peek() {
+                while let Some(Token::SuffixOp(_)) = tokens.peek() {
                     node = suffix(node, tokens);
                 }
                 node
@@ -62,10 +62,10 @@ fn primary(tokens: &mut Tokens) -> Node {
 
 fn suffix(lhs: Node, tokens: &mut Tokens) -> Node {
     match tokens.pop().unwrap() {
-        Token::SuffixOp(suffix, property) => match suffix.as_ref() {
+        Token::SuffixOp(suffix) => match suffix.as_ref() {
             "++" => Node::Suffix(SuffixNode {
                 suffix: TokenNode {
-                    token: Token::SuffixOp(suffix, property),
+                    token: Token::SuffixOp(suffix),
                 },
                 node: Box::new(lhs),
             }),
@@ -176,16 +176,14 @@ mod tests {
     }
     fn get_suffix(op: &str) -> TokenNode {
         let op = String::from(op);
-        let property = lexer::get_property(&op);
         TokenNode {
-            token: Token::SuffixOp(op, property),
+            token: Token::SuffixOp(op),
         }
     }
     fn get_prefix(op: &str) -> TokenNode {
         let op = String::from(op);
-        let property = lexer::get_property(&op);
         TokenNode {
-            token: Token::PrefixOp(op, property),
+            token: Token::PrefixOp(op),
         }
     }
     fn get_bin_exp(op: &str, lhs: Node, rhs: Node) -> Node {
@@ -229,9 +227,9 @@ mod tests {
     #[allow(dead_code)]
     fn show(actual: Node, expected: Node) {
         println!("actual   ============");
-        print_node(actual, 0, 0);
+        print_node(actual, 0);
         println!("expected ============");
-        print_node(expected, 0, 0);
+        print_node(expected, 0);
     }
 
     #[test]
