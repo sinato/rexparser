@@ -9,6 +9,7 @@ pub struct Nodes {
 pub enum Node {
     BinExp(BinExpNode),
     TernaryExp(TernaryExpNode),
+    Prefix(PrefixNode),
     Suffix(SuffixNode),
     ArrayIndex(ArrayIndexNode),
     FunctionCall(FunctionCallNode),
@@ -40,6 +41,12 @@ pub struct ArrayIndexNode {
 pub struct FunctionCallNode {
     pub identifier: TokenNode,
     pub parameters: Box<Node>,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct PrefixNode {
+    pub prefix: TokenNode,
+    pub node: Box<Node>,
 }
 
 #[derive(Debug, PartialEq, Clone)]

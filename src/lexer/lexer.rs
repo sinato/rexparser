@@ -12,6 +12,7 @@ pub fn get_property(op: &String) -> Property {
     let mut map = HashMap::new();
     map.insert("=", (2, Associativity::Right));
     map.insert("+", (12, Associativity::Left));
+    map.insert("-", (12, Associativity::Left));
     map.insert("*", (13, Associativity::Left));
     map.insert("++", (16, Associativity::Left));
     map.insert("[", (16, Associativity::Left));
@@ -34,8 +35,9 @@ impl Lexer {
             ("NUM", r"(\d+(\.\d)*)"),
             ("SQUARE_E", r"\]"),
             ("PAREN_E", r"\)"),
-            ("SUFFIXOP", r"(\+\+|\[|\()"),
-            ("OP", r"(\+|\*|=|,)"),
+            ("PREFIXOP", r"(\s|^)\+\+"),
+            ("SUFFIXOP", r"(\+\+(\s|$)|\[|\()"),
+            ("OP", r"(\+|-|\*|=|,)"),
             ("IDE", r"[a-z]+"),
         ];
         let re = make_regex(&token_patterns);
@@ -66,8 +68,18 @@ impl Lexer {
                 )),
                 "SQUARE_E" => tokens.push(Token::SquareE),
                 "PAREN_E" => tokens.push(Token::ParenE),
-                "SUFFIXOP" => tokens.push(Token::SuffixOp(val.clone(), get_property(&val))),
-                "OP" => tokens.push(Token::Op(val.clone(), get_property(&val))),
+                "PREFIXOP" => {
+                    let val = val.trim_start().to_string();
+                    tokens.push(Token::PrefixOp(val.clone(), get_property(&val)));
+                }
+                "SUFFIXOP" => {
+                    let val = val.trim_end().to_string();
+                    tokens.push(Token::SuffixOp(val.clone(), get_property(&val)));
+                }
+                "OP" => {
+                    let val = val.trim_end().to_string();
+                    tokens.push(Token::Op(val.clone(), get_property(&val)))
+                }
                 "IDE" => tokens.push(Token::Ide(val)),
                 _ => panic!("This is not an expected panic"),
             }

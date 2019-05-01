@@ -9,8 +9,7 @@ use util::print_entry;
 /// expression := num op num (op num)?
 fn main() {
     // let input = String::from("a = b = 1 + 2++ * 3 + 4++");
-    let input = String::from("b = a[1][2][3]++ * 4 + 5");
-    // let input = String::from("a[1]");
+    let input = String::from("b = ++a * 1 + 2");
     let lexer = Lexer::new();
     let tokens = lexer.lex(input);
     println!("tokens: {:?}", tokens);

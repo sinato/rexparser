@@ -42,6 +42,11 @@ pub fn print_node(node: Node, depth: u32, width: u32) {
             print!("└────── ");
             print_node(*node.rhs, depth + 2, width);
         }
+        Node::Prefix(node) => {
+            print!("{}", node.prefix);
+            print_dash(default_dash_num - node.prefix.token.get_len());
+            print_node(*node.node, depth + 1, width);
+        }
         Node::Suffix(node) => {
             print!("{}", node.suffix);
             print_dash(default_dash_num - node.suffix.token.get_len());

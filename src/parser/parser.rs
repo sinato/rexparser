@@ -1,6 +1,7 @@
 use crate::lexer::token::{Associativity, Token, Tokens};
 use crate::parser::node::{
-    ArrayIndexNode, BinExpNode, FunctionCallNode, Node, SuffixNode, TernaryExpNode, TokenNode,
+    ArrayIndexNode, BinExpNode, FunctionCallNode, Node, PrefixNode, SuffixNode, TernaryExpNode,
+    TokenNode,
 };
 
 pub fn toplevel(mut tokens: Tokens) -> Node {
@@ -16,6 +17,15 @@ fn primary(tokens: &mut Tokens) -> Node {
     let lhs = match tokens.pop() {
         Some(token) => match token {
             Token::Ide(_) | Token::Num(_) => Node::Token(TokenNode { token }),
+            Token::PrefixOp(prefix, property) => {
+                let node = primary(tokens);
+                Node::Prefix(PrefixNode {
+                    prefix: TokenNode {
+                        token: Token::PrefixOp(prefix, property),
+                    },
+                    node: Box::new(node),
+                })
+            }
             _ => panic!(format!("Expect a primary token, but this is {:?}", token)),
         },
         None => panic!(),
@@ -171,6 +181,13 @@ mod tests {
             token: Token::SuffixOp(op, property),
         }
     }
+    fn get_prefix(op: &str) -> TokenNode {
+        let op = String::from(op);
+        let property = lexer::get_property(&op);
+        TokenNode {
+            token: Token::PrefixOp(op, property),
+        }
+    }
     fn get_bin_exp(op: &str, lhs: Node, rhs: Node) -> Node {
         Node::BinExp(BinExpNode {
             op: get_op(op),
@@ -181,6 +198,12 @@ mod tests {
     fn get_suffix_exp(suffix: &str, lhs: Node) -> Node {
         Node::Suffix(SuffixNode {
             suffix: get_suffix(suffix),
+            node: Box::new(lhs),
+        })
+    }
+    fn get_prefix_exp(prefix: &str, lhs: Node) -> Node {
+        Node::Prefix(PrefixNode {
+            prefix: get_prefix(prefix),
             node: Box::new(lhs),
         })
     }
@@ -290,6 +313,17 @@ mod tests {
         // expect: a++
         let lhs = get_ide("a");
         let expected = get_suffix_exp("++", lhs);
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_prefix_increment() {
+        let actual = run(String::from("b = ++a * 1 + 2"));
+        let lhs = get_ide("b");
+        let rhs = get_prefix_exp("++", get_ide("a"));
+        let rhs = get_bin_exp("*", rhs, get_num(1));
+        let rhs = get_bin_exp("+", rhs, get_num(2));
+        let expected = get_bin_exp("=", lhs, rhs);
         assert_eq!(actual, expected);
     }
 

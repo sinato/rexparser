@@ -14,6 +14,7 @@ pub struct Property {
 pub enum Token {
     Num(i32),
     Op(String, Property),
+    PrefixOp(String, Property),
     SuffixOp(String, Property),
     Ide(String),
     SquareE,
@@ -26,6 +27,7 @@ impl Token {
         match self {
             Token::Num(num) => num.to_string().len(),
             Token::Op(op, _) => op.len(),
+            Token::PrefixOp(op, _) => op.len(),
             Token::SuffixOp(op, _) => op.len(),
             Token::Ide(ide) => ide.len(),
             _ => panic!("this kind of token does not have the length."),
@@ -37,6 +39,7 @@ impl std::fmt::Display for Token {
         match self {
             Token::Num(num) => write!(f, "{}", num),
             Token::Op(op, _) => write!(f, "{}", op),
+            Token::PrefixOp(op, _) => write!(f, "{}", op),
             Token::SuffixOp(op, _) => write!(f, "{}", op),
             Token::Ide(ide) => write!(f, "{}", ide),
             Token::SquareE => write!(f, "]"),
