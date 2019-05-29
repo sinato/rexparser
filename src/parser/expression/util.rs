@@ -1,4 +1,4 @@
-use crate::parser::node::Node;
+use crate::parser::expression::node::Node;
 
 pub fn print_entry(node: Node) {
     print_node(node, 0);
