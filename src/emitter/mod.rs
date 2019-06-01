@@ -67,10 +67,17 @@ fn emit_expression(emitter: &mut Emitter, node: ExpNode) -> IntValue {
 }
 
 fn emit_bin_exp(emitter: &mut Emitter, node: BinExpNode) -> IntValue {
-    let _operator = node.op;
+    let operator = match node.op.token {
+        Token::Op(op, _) => op,
+        _ => panic!(),
+    };
     let lhs = emit_expression(emitter, *node.lhs);
     let rhs = emit_expression(emitter, *node.rhs);
-    emitter.builder.build_int_add(lhs, rhs, "add")
+    match operator.as_ref() {
+        "+" => emitter.builder.build_int_add(lhs, rhs, "add"),
+        "*" => emitter.builder.build_int_mul(lhs, rhs, "mul"),
+        _ => panic!("unimpelemented operator."),
+    }
 }
 fn emit_token(emitter: &mut Emitter, node: TokenNode) -> IntValue {
     match node.token {

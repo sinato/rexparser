@@ -30,3 +30,9 @@ fn test_add() {
     let filepath = "./tests/resources/test_add.c";
     run(filepath, "3");
 }
+
+#[test]
+fn test_mul() {
+    let filepath = "./tests/resources/test_mul.c";
+    run(filepath, "6");
+}
