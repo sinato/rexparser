@@ -36,3 +36,9 @@ fn test_mul() {
     let filepath = "./tests/resources/test_mul.c";
     run(filepath, "6");
 }
+
+#[test]
+fn test_multi_exp() {
+    let filepath = "./tests/resources/test_multi_exp.c";
+    run(filepath, "11");
+}

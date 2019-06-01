@@ -50,16 +50,13 @@ fn emit_function(emitter: &mut Emitter, node: DeclareNode) {
 }
 
 fn emit_statement(emitter: &mut Emitter, node: StatementNode) {
-    let ret = match node.expression {
-        ExpressionNode::BinExp(node) => emit_bin_exp(emitter, node),
-        ExpressionNode::Token(node) => emit_token(emitter, node),
-        _ => panic!(""),
-    };
+    let ret = emit_expression(emitter, node.expression);
     emitter.builder.build_return(Some(&ret));
 }
 
 fn emit_expression(emitter: &mut Emitter, node: ExpressionNode) -> IntValue {
     match node {
+        ExpressionNode::BinExp(node) => emit_bin_exp(emitter, node),
         ExpressionNode::Token(node) => emit_token(emitter, node),
         _ => panic!(""),
     }
