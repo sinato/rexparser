@@ -8,3 +8,4 @@ edition = "2018"
 regex = "1"
 log = { version = "0.4", features = ["max_level_debug", "release_max_level_warn"] }
 env_logger = "0.6.0"
+inkwell = { git  =  "https://github.com/TheDan64/inkwell", branch = 'llvm7-0' }

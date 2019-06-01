@@ -2,19 +2,9 @@ pub mod declare;
 pub mod expression;
 pub mod statement;
 
-use crate::lexer::lexer::Lexer;
-use crate::parser::expression::parser::toplevel;
-use crate::parser::expression::util::print_entry;
+use crate::lexer::token::Tokens;
+use crate::parser::declare::Node;
 
-pub fn run() {
-    // let input = String::from("a = b = 1 + 2++ * 3 + 4++");
-    // let input = String::from("-1 + +3");
-    // let input = String::from("a = (1 * (2++ + -3)) * 4");
-    let input = String::from("a = (1 * (2 + 3)) * 4");
-    let lexer = Lexer::new();
-    let tokens = lexer.lex(input);
-    println!("tokens: {:?}", tokens);
-    let node = toplevel(tokens);
-    // dbg!(node);
-    print_entry(node);
+pub fn parser(tokens: &mut Tokens) -> Node {
+    Node::new(tokens)
 }

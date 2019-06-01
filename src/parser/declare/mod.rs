@@ -15,8 +15,8 @@ impl Node {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct FunctionNode {
-    identifier: String,
-    statement: StatementNode,
+    pub identifier: String,
+    pub statement: StatementNode,
 }
 impl FunctionNode {
     pub fn new(tokens: &mut Tokens) -> FunctionNode {
