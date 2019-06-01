@@ -1,4 +1,6 @@
+pub mod declare;
 pub mod expression;
+pub mod statement;
 
 use crate::lexer::lexer::Lexer;
 use crate::parser::expression::parser::toplevel;

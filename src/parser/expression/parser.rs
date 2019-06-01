@@ -12,7 +12,7 @@ pub fn toplevel(mut tokens: Tokens) -> Node {
 mod tests {
     use super::*;
     use crate::lexer::lexer;
-    use crate::util::print_node;
+    use crate::parser::expression::util::print_node;
 
     fn run(input: String) -> Node {
         let lexer = lexer::Lexer::new();
