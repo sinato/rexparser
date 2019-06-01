@@ -1,6 +1,6 @@
 pub mod parser;
 
-use crate::lexer::token::{Token, Tokens};
+use crate::lexer::token::*;
 use crate::parser::statement::StatementNode;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -16,11 +16,15 @@ impl DeclareNode {
 #[derive(Debug, PartialEq, Clone)]
 pub struct FunctionNode {
     pub identifier: String,
+    pub return_type: BasicType,
     pub statement: StatementNode,
 }
 impl FunctionNode {
     pub fn new(tokens: &mut Tokens) -> FunctionNode {
-        tokens.pop(); // consume int
+        let return_type = match tokens.pop().unwrap() {
+            Token::Type(val) => val,
+            _ => panic!(),
+        };
 
         let identifier = match tokens.pop().unwrap() {
             Token::Ide(val) => val,
@@ -35,6 +39,7 @@ impl FunctionNode {
 
         FunctionNode {
             identifier,
+            return_type,
             statement,
         }
     }

@@ -51,22 +51,26 @@ fn emit_function(emitter: &mut Emitter, node: DeclareNode) {
 
     let basic_block = emitter.context.append_basic_block(&func, "entry");
     emitter.builder.position_at_end(&basic_block);
-    emit_statement(emitter, statement_node);
+    emit_statement(emitter, statement_node, function_node.return_type);
 }
 
-fn emit_statement(emitter: &mut Emitter, node: StatementNode) {
+fn emit_statement(emitter: &mut Emitter, node: StatementNode, return_type: BasicType) {
     match node {
-        StatementNode::Return(node) => emit_return_statement(emitter, node),
+        StatementNode::Return(node) => emit_return_statement(emitter, node, return_type),
     }
 }
 
-fn emit_return_statement(emitter: &mut Emitter, node: ReturnStatementNode) {
+fn emit_return_statement(emitter: &mut Emitter, node: ReturnStatementNode, return_type: BasicType) {
     let ret = emit_expression(emitter, node.expression);
-    let ret = match ret {
-        Value::Int(val) => val,
-        Value::Float(val) => val.const_to_signed_int(emitter.context.i32_type()),
-    };
-    emitter.builder.build_return(Some(&ret));
+    match return_type {
+        BasicType::Int => {
+            let ret = match ret {
+                Value::Int(val) => val,
+                Value::Float(val) => val.const_to_signed_int(emitter.context.i32_type()),
+            };
+            emitter.builder.build_return(Some(&ret));
+        }
+    }
 }
 
 fn emit_expression(emitter: &mut Emitter, node: ExpressionNode) -> Value {

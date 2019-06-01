@@ -11,6 +11,11 @@ pub struct Property {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+pub enum BasicType {
+    Int,
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     FloatNum(String),
     IntNum(String),
@@ -18,6 +23,7 @@ pub enum Token {
     PrefixOp(String),
     SuffixOp(String),
     Ide(String),
+    Type(BasicType),
     Semi,
     CurlyS,
     CurlyE,
@@ -48,6 +54,7 @@ impl std::fmt::Display for Token {
             Token::PrefixOp(op) => write!(f, "{}", op),
             Token::SuffixOp(op) => write!(f, "{}", op),
             Token::Ide(ide) => write!(f, "{}", ide),
+            Token::Type(val) => write!(f, "{:?}", val),
             Token::Semi => write!(f, ";"),
             Token::CurlyS => write!(f, "{{"),
             Token::CurlyE => write!(f, "}}"),

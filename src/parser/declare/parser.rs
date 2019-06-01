@@ -17,6 +17,7 @@ mod tests {
     fn run(input: String) -> DeclareNode {
         let lexer = lexer::Lexer::new();
         let mut tokens = lexer.lex(input);
+        println!("tokens: {:?}", tokens);
         toplevel(&mut tokens)
     }
 
@@ -39,10 +40,12 @@ mod tests {
         let actual = run(code);
 
         let identifier = String::from("main");
+        let return_type = BasicType::Int;
         let expression = get_num(1);
         let statement = StatementNode::Return(ReturnStatementNode { expression });
         let expected = DeclareNode::Function(FunctionNode {
             identifier,
+            return_type,
             statement,
         });
 

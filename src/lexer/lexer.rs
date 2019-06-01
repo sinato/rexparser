@@ -1,4 +1,4 @@
-use crate::lexer::token::{Associativity, Property, Token, Tokens};
+use crate::lexer::token::{Associativity, BasicType, Property, Token, Tokens};
 use log::debug;
 use regex::Regex;
 use std::collections::HashMap;
@@ -34,6 +34,7 @@ impl Lexer {
             ("FLOAT_NUM", r"(\d+\.\d+)"),
             ("INT_NUM", r"(\d+)"),
             ("SEMI", r";"),
+            ("TYPE", r"int"),
             ("SQUARE_E", r"\]"),
             ("PAREN_E", r"\)"),
             ("CURLY_S", r"\{"),
@@ -68,6 +69,10 @@ impl Lexer {
                 "FLOAT_NUM" => tokens.push(Token::FloatNum(val)),
                 "INT_NUM" => tokens.push(Token::IntNum(val)),
                 "SEMI" => tokens.push(Token::Semi),
+                "TYPE" => match val.as_ref() {
+                    "int" => tokens.push(Token::Type(BasicType::Int)),
+                    _ => panic!("Unimplemented type."),
+                },
                 "SQUARE_E" => tokens.push(Token::SquareE),
                 "PAREN_E" => tokens.push(Token::ParenE),
                 "CURLY_S" => tokens.push(Token::CurlyS),
