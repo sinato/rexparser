@@ -24,3 +24,9 @@ fn test_single_num() {
     let filepath = "./tests/resources/test_single_num.c";
     run(filepath, "1");
 }
+
+#[test]
+fn test_add() {
+    let filepath = "./tests/resources/test_add.c";
+    run(filepath, "3");
+}

@@ -1,10 +1,14 @@
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::module::Module;
+use inkwell::values::IntValue;
 
 use std::path;
 
+use crate::lexer::token::*;
 use crate::parser::declare::Node;
+use crate::parser::expression::node::Node as ExpNode;
+use crate::parser::expression::node::{BinExpNode, TokenNode};
 use crate::parser::statement::*;
 
 pub struct Emitter {
@@ -47,6 +51,30 @@ fn emit_function(emitter: &mut Emitter, node: Node) {
 }
 
 fn emit_statement(emitter: &mut Emitter, node: StatementNode) {
-    let ret = emitter.context.i32_type().const_int(node.val as u64, false);
+    let ret = match node.expression {
+        ExpNode::BinExp(node) => emit_bin_exp(emitter, node),
+        ExpNode::Token(node) => emit_token(emitter, node),
+        _ => panic!(""),
+    };
     emitter.builder.build_return(Some(&ret));
+}
+
+fn emit_expression(emitter: &mut Emitter, node: ExpNode) -> IntValue {
+    match node {
+        ExpNode::Token(node) => emit_token(emitter, node),
+        _ => panic!(""),
+    }
+}
+
+fn emit_bin_exp(emitter: &mut Emitter, node: BinExpNode) -> IntValue {
+    let _operator = node.op;
+    let lhs = emit_expression(emitter, *node.lhs);
+    let rhs = emit_expression(emitter, *node.rhs);
+    emitter.builder.build_int_add(lhs, rhs, "add")
+}
+fn emit_token(emitter: &mut Emitter, node: TokenNode) -> IntValue {
+    match node.token {
+        Token::Num(val) => emitter.context.i32_type().const_int(val as u64, false),
+        _ => panic!(),
+    }
 }

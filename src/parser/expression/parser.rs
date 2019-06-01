@@ -4,8 +4,8 @@ use crate::parser::expression::node::{
     TokenNode,
 };
 
-pub fn toplevel(mut tokens: Tokens) -> Node {
-    BinExpNode::new(&mut tokens)
+pub fn toplevel(tokens: &mut Tokens) -> Node {
+    BinExpNode::new(tokens)
 }
 
 #[cfg(test)]
@@ -16,8 +16,8 @@ mod tests {
 
     fn run(input: String) -> Node {
         let lexer = lexer::Lexer::new();
-        let tokens = lexer.lex(input);
-        toplevel(tokens)
+        let mut tokens = lexer.lex(input);
+        toplevel(&mut tokens)
     }
     fn get_num(num: i32) -> Node {
         Node::Token(TokenNode {
