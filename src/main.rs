@@ -1,3 +1,4 @@
+use std::fs;
 use std::{env, process};
 
 mod emitter;
@@ -11,7 +12,7 @@ use parser::parser;
 fn compiler(code: String) {
     let lexer = Lexer::new();
     let mut tokens = lexer.lex(code);
-    // dbg!(tokens.clone());
+    //dbg!(tokens.clone());
     let node = parser(&mut tokens);
     // dbg!(node.clone());
     let mut emitter = Emitter::new();
@@ -22,9 +23,11 @@ fn compiler(code: String) {
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() != 2 {
-        eprintln!("Usage rexparser \"<code>\"");
+        eprintln!("Usage rexparser \"<filepath>\"");
         process::exit(1);
     }
-    let code = args[1].to_string();
+    let filepath = args[1].to_string();
+    let code: String =
+        fs::read_to_string(filepath).expect("something went wrong reading the file.");
     compiler(code);
 }

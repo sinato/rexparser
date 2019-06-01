@@ -1,12 +1,10 @@
-use std::fs::File;
-use std::io::prelude::*;
 use std::process::Command;
 
-fn run(input: &str, expect: &str) {
+fn run(filepath: &str, expect: &str) {
     // compile
     Command::new("sh")
         .arg("-c")
-        .arg(format!("./target/debug/rexparser \"{}\"", input))
+        .arg(format!("./target/debug/rexparser \"{}\"", filepath))
         .status()
         .expect("process failed to execute");
 
@@ -21,17 +19,8 @@ fn run(input: &str, expect: &str) {
     assert!(status.to_string() == String::from(format!("exit code: {}", expect)));
 }
 
-fn get_code(filename: &str) -> String {
-    let filename = String::from("./tests/resources/") + filename;
-    let mut f = File::open(filename).expect("file not found");
-    let mut contents = String::new();
-    f.read_to_string(&mut contents)
-        .expect("somethig went wrong reading the file");
-    contents
-}
-
 #[test]
 fn test_single_num() {
-    let code = get_code("test_single_num.c");
-    run(&code, "1")
+    let filepath = "./tests/resources/test_single_num.c";
+    run(filepath, "1");
 }
