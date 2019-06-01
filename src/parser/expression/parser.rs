@@ -1,10 +1,7 @@
 use crate::lexer::token::{Token, Tokens};
-use crate::parser::expression::node::{
-    ArrayIndexNode, BinExpNode, FunctionCallNode, Node, PrefixNode, SuffixNode, TernaryExpNode,
-    TokenNode,
-};
+use crate::parser::expression::node::*;
 
-pub fn toplevel(tokens: &mut Tokens) -> Node {
+pub fn toplevel(tokens: &mut Tokens) -> ExpressionNode {
     BinExpNode::new(tokens)
 }
 
@@ -14,18 +11,18 @@ mod tests {
     use crate::lexer::lexer;
     use crate::parser::expression::util::print_node;
 
-    fn run(input: String) -> Node {
+    fn run(input: String) -> ExpressionNode {
         let lexer = lexer::Lexer::new();
         let mut tokens = lexer.lex(input);
         toplevel(&mut tokens)
     }
-    fn get_num(num: i32) -> Node {
-        Node::Token(TokenNode {
+    fn get_num(num: i32) -> ExpressionNode {
+        ExpressionNode::Token(TokenNode {
             token: Token::Num(num),
         })
     }
-    fn get_ide(ide: &str) -> Node {
-        Node::Token(TokenNode {
+    fn get_ide(ide: &str) -> ExpressionNode {
+        ExpressionNode::Token(TokenNode {
             token: Token::Ide(String::from(ide)),
         })
     }
@@ -48,46 +45,50 @@ mod tests {
             token: Token::PrefixOp(op),
         }
     }
-    fn get_bin_exp(op: &str, lhs: Node, rhs: Node) -> Node {
-        Node::BinExp(BinExpNode {
+    fn get_bin_exp(op: &str, lhs: ExpressionNode, rhs: ExpressionNode) -> ExpressionNode {
+        ExpressionNode::BinExp(BinExpNode {
             op: get_op(op),
             lhs: Box::new(lhs),
             rhs: Box::new(rhs),
         })
     }
-    fn get_suffix_exp(suffix: &str, lhs: Node) -> Node {
-        Node::Suffix(SuffixNode {
+    fn get_suffix_exp(suffix: &str, lhs: ExpressionNode) -> ExpressionNode {
+        ExpressionNode::Suffix(SuffixNode {
             suffix: get_suffix(suffix),
             node: Box::new(lhs),
         })
     }
-    fn get_prefix_exp(prefix: &str, lhs: Node) -> Node {
-        Node::Prefix(PrefixNode {
+    fn get_prefix_exp(prefix: &str, lhs: ExpressionNode) -> ExpressionNode {
+        ExpressionNode::Prefix(PrefixNode {
             prefix: get_prefix(prefix),
             node: Box::new(lhs),
         })
     }
-    fn get_array_index_exp(array: Node, index: Node) -> Node {
-        Node::ArrayIndex(ArrayIndexNode {
+    fn get_array_index_exp(array: ExpressionNode, index: ExpressionNode) -> ExpressionNode {
+        ExpressionNode::ArrayIndex(ArrayIndexNode {
             array: Box::new(array),
             index: Box::new(index),
         })
     }
-    fn get_function_call_exp(identifier: TokenNode, parameters: Node) -> Node {
-        Node::FunctionCall(FunctionCallNode {
+    fn get_function_call_exp(identifier: TokenNode, parameters: ExpressionNode) -> ExpressionNode {
+        ExpressionNode::FunctionCall(FunctionCallNode {
             identifier,
             parameters: Box::new(parameters),
         })
     }
-    fn get_ternary_exp(condition: Node, lhs: Node, rhs: Node) -> Node {
-        Node::TernaryExp(TernaryExpNode {
+    fn get_ternary_exp(
+        condition: ExpressionNode,
+        lhs: ExpressionNode,
+        rhs: ExpressionNode,
+    ) -> ExpressionNode {
+        ExpressionNode::TernaryExp(TernaryExpNode {
             condition: Box::new(condition),
             lhs: Box::new(lhs),
             rhs: Box::new(rhs),
         })
     }
     #[allow(dead_code)]
-    fn show(actual: Node, expected: Node) {
+    fn show(actual: ExpressionNode, expected: ExpressionNode) {
         println!("actual   ============");
         print_node(actual, 0);
         println!("expected ============");
@@ -246,7 +247,7 @@ mod tests {
         let identifier = TokenNode {
             token: Token::Ide("func".to_string()),
         };
-        let parameters = Node::Empty;
+        let parameters = ExpressionNode::Empty;
         let function_call = get_function_call_exp(identifier, parameters);
         let rhs = get_bin_exp("+", function_call, get_num(5));
         let expected = get_bin_exp("=", lhs, rhs);

@@ -6,9 +6,8 @@ use inkwell::values::IntValue;
 use std::path;
 
 use crate::lexer::token::*;
-use crate::parser::declare::Node;
-use crate::parser::expression::node::Node as ExpNode;
-use crate::parser::expression::node::{BinExpNode, TokenNode};
+use crate::parser::declare::DeclareNode;
+use crate::parser::expression::node::{BinExpNode, ExpressionNode, TokenNode};
 use crate::parser::statement::*;
 
 pub struct Emitter {
@@ -30,14 +29,14 @@ impl Emitter {
     pub fn print_to_file(&self) {
         let _ = self.module.print_to_file(path::Path::new("compiled.ll"));
     }
-    pub fn emit(&mut self, node: Node) {
+    pub fn emit(&mut self, node: DeclareNode) {
         emit_function(self, node)
     }
 }
 
-fn emit_function(emitter: &mut Emitter, node: Node) {
+fn emit_function(emitter: &mut Emitter, node: DeclareNode) {
     let function_node = match node {
-        Node::Function(node) => node,
+        DeclareNode::Function(node) => node,
     };
     let identifier = function_node.identifier;
     let statement_node = function_node.statement;
@@ -52,16 +51,16 @@ fn emit_function(emitter: &mut Emitter, node: Node) {
 
 fn emit_statement(emitter: &mut Emitter, node: StatementNode) {
     let ret = match node.expression {
-        ExpNode::BinExp(node) => emit_bin_exp(emitter, node),
-        ExpNode::Token(node) => emit_token(emitter, node),
+        ExpressionNode::BinExp(node) => emit_bin_exp(emitter, node),
+        ExpressionNode::Token(node) => emit_token(emitter, node),
         _ => panic!(""),
     };
     emitter.builder.build_return(Some(&ret));
 }
 
-fn emit_expression(emitter: &mut Emitter, node: ExpNode) -> IntValue {
+fn emit_expression(emitter: &mut Emitter, node: ExpressionNode) -> IntValue {
     match node {
-        ExpNode::Token(node) => emit_token(emitter, node),
+        ExpressionNode::Token(node) => emit_token(emitter, node),
         _ => panic!(""),
     }
 }

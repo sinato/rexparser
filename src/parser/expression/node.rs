@@ -1,12 +1,12 @@
 use crate::lexer::token::{Associativity, Token, Tokens};
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct Nodes {
-    pub nodes: Vec<Node>,
+pub struct ExpressionNodes {
+    pub nodes: Vec<ExpressionNode>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum Node {
+pub enum ExpressionNode {
     BinExp(BinExpNode),
     TernaryExp(TernaryExpNode),
     Prefix(PrefixNode),
@@ -16,13 +16,13 @@ pub enum Node {
     Token(TokenNode),
     Empty,
 }
-impl Node {
-    pub fn new(tokens: &mut Tokens) -> Node {
-        let lhs = Node::new_with_prefix(tokens);
-        let lhs = Node::new_with_suffix(lhs, tokens);
+impl ExpressionNode {
+    pub fn new(tokens: &mut Tokens) -> ExpressionNode {
+        let lhs = ExpressionNode::new_with_prefix(tokens);
+        let lhs = ExpressionNode::new_with_suffix(lhs, tokens);
         lhs
     }
-    fn new_with_prefix(tokens: &mut Tokens) -> Node {
+    fn new_with_prefix(tokens: &mut Tokens) -> ExpressionNode {
         match tokens.peek() {
             Some(token) => match token {
                 Token::Ide(_) | Token::Num(_) => TokenNode::new(tokens),
@@ -31,8 +31,8 @@ impl Node {
                     // treat as a sing operator
                     "+" | "-" => {
                         tokens.pop(); // consume "+" | "-"
-                        let node = Node::new(tokens);
-                        Node::Prefix(PrefixNode {
+                        let node = ExpressionNode::new(tokens);
+                        ExpressionNode::Prefix(PrefixNode {
                             prefix: TokenNode {
                                 token: Token::PrefixOp(op),
                             },
@@ -56,7 +56,7 @@ impl Node {
             None => panic!(),
         }
     }
-    fn new_with_suffix(lhs: Node, tokens: &mut Tokens) -> Node {
+    fn new_with_suffix(lhs: ExpressionNode, tokens: &mut Tokens) -> ExpressionNode {
         match tokens.peek() {
             Some(token) => match token {
                 Token::SuffixOp(_) => {
@@ -77,15 +77,19 @@ impl Node {
 #[derive(Debug, PartialEq, Clone)]
 pub struct BinExpNode {
     pub op: TokenNode,
-    pub lhs: Box<Node>,
-    pub rhs: Box<Node>,
+    pub lhs: Box<ExpressionNode>,
+    pub rhs: Box<ExpressionNode>,
 }
 impl BinExpNode {
-    pub fn new(tokens: &mut Tokens) -> Node {
-        let lhs = Node::new(tokens);
+    pub fn new(tokens: &mut Tokens) -> ExpressionNode {
+        let lhs = ExpressionNode::new(tokens);
         BinExpNode::binary_expression(lhs, tokens, 0)
     }
-    fn binary_expression(mut lhs: Node, tokens: &mut Tokens, min_precedence: u32) -> Node {
+    fn binary_expression(
+        mut lhs: ExpressionNode,
+        tokens: &mut Tokens,
+        min_precedence: u32,
+    ) -> ExpressionNode {
         while let Some(token) = tokens.peek() {
             match token {
                 Token::Op(op, property) => {
@@ -99,7 +103,7 @@ impl BinExpNode {
                         token: Token::Op(op, property),
                     };
                     // TODO: impl error handling
-                    let mut rhs = Node::new(tokens);
+                    let mut rhs = ExpressionNode::new(tokens);
                     while let Some(Token::Op(_, property2)) = tokens.peek() {
                         let (precedence, _associativity) =
                             (property2.precedence, property2.associativity);
@@ -117,7 +121,7 @@ impl BinExpNode {
                         }
                         rhs = BinExpNode::binary_expression(rhs, tokens, precedence)
                     }
-                    lhs = Node::BinExp(BinExpNode {
+                    lhs = ExpressionNode::BinExp(BinExpNode {
                         op,
                         lhs: Box::new(lhs),
                         rhs: Box::new(rhs),
@@ -132,18 +136,18 @@ impl BinExpNode {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct TernaryExpNode {
-    pub condition: Box<Node>,
-    pub lhs: Box<Node>,
-    pub rhs: Box<Node>,
+    pub condition: Box<ExpressionNode>,
+    pub lhs: Box<ExpressionNode>,
+    pub rhs: Box<ExpressionNode>,
 }
 impl TernaryExpNode {
-    pub fn new(lhs: Node, tokens: &mut Tokens) -> Node {
+    pub fn new(lhs: ExpressionNode, tokens: &mut Tokens) -> ExpressionNode {
         let condition = lhs.clone();
         let _question = tokens.pop();
         let ternary_lhs = BinExpNode::new(tokens);
         let _colon = tokens.pop();
         let ternary_rhs = BinExpNode::new(tokens);
-        Node::TernaryExp(TernaryExpNode {
+        ExpressionNode::TernaryExp(TernaryExpNode {
             condition: Box::new(condition),
             lhs: Box::new(ternary_lhs),
             rhs: Box::new(ternary_rhs),
@@ -153,26 +157,26 @@ impl TernaryExpNode {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct ArrayIndexNode {
-    pub array: Box<Node>,
-    pub index: Box<Node>,
+    pub array: Box<ExpressionNode>,
+    pub index: Box<ExpressionNode>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct FunctionCallNode {
     pub identifier: TokenNode,
-    pub parameters: Box<Node>,
+    pub parameters: Box<ExpressionNode>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct PrefixNode {
     pub prefix: TokenNode,
-    pub node: Box<Node>,
+    pub node: Box<ExpressionNode>,
 }
 impl PrefixNode {
-    pub fn new(tokens: &mut Tokens) -> Node {
+    pub fn new(tokens: &mut Tokens) -> ExpressionNode {
         let token = tokens.pop().unwrap();
-        let node = Node::new(tokens);
-        Node::Prefix(PrefixNode {
+        let node = ExpressionNode::new(tokens);
+        ExpressionNode::Prefix(PrefixNode {
             prefix: TokenNode { token },
             node: Box::new(node),
         })
@@ -182,13 +186,13 @@ impl PrefixNode {
 #[derive(Debug, PartialEq, Clone)]
 pub struct SuffixNode {
     pub suffix: TokenNode,
-    pub node: Box<Node>,
+    pub node: Box<ExpressionNode>,
 }
 impl SuffixNode {
-    fn new(lhs: Node, tokens: &mut Tokens) -> Node {
+    fn new(lhs: ExpressionNode, tokens: &mut Tokens) -> ExpressionNode {
         match tokens.pop().unwrap() {
             Token::SuffixOp(suffix) => match suffix.as_ref() {
-                "++" => Node::Suffix(SuffixNode {
+                "++" => ExpressionNode::Suffix(SuffixNode {
                     suffix: TokenNode {
                         token: Token::SuffixOp(suffix),
                     },
@@ -196,7 +200,7 @@ impl SuffixNode {
                 }),
                 "[" => {
                     let index = BinExpNode::new(tokens);
-                    let array = Node::ArrayIndex(ArrayIndexNode {
+                    let array = ExpressionNode::ArrayIndex(ArrayIndexNode {
                         array: Box::new(lhs),
                         index: Box::new(index),
                     });
@@ -204,16 +208,16 @@ impl SuffixNode {
                     array
                 }
                 "(" => {
-                    if let Node::Token(token_node) = lhs {
+                    if let ExpressionNode::Token(token_node) = lhs {
                         let parameters = match tokens.peek() {
                             Some(token) => match token {
-                                Token::ParenE => Box::new(Node::Empty),
+                                Token::ParenE => Box::new(ExpressionNode::Empty),
                                 _ => Box::new(BinExpNode::new(tokens)),
                             },
                             None => panic!(),
                         };
                         tokens.pop(); // consume ParanE TODO: impl error handling
-                        Node::FunctionCall(FunctionCallNode {
+                        ExpressionNode::FunctionCall(FunctionCallNode {
                             identifier: token_node,
                             parameters,
                         })
@@ -233,9 +237,9 @@ pub struct TokenNode {
     pub token: Token,
 }
 impl TokenNode {
-    pub fn new(tokens: &mut Tokens) -> Node {
+    pub fn new(tokens: &mut Tokens) -> ExpressionNode {
         let token = tokens.pop().unwrap();
-        Node::Token(TokenNode { token })
+        ExpressionNode::Token(TokenNode { token })
     }
 }
 impl std::fmt::Display for TokenNode {

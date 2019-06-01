@@ -3,8 +3,8 @@ pub mod expression;
 pub mod statement;
 
 use crate::lexer::token::Tokens;
-use crate::parser::declare::Node;
+use crate::parser::declare::DeclareNode;
 
-pub fn parser(tokens: &mut Tokens) -> Node {
-    Node::new(tokens)
+pub fn parser(tokens: &mut Tokens) -> DeclareNode {
+    DeclareNode::new(tokens)
 }

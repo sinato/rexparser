@@ -4,12 +4,12 @@ use crate::lexer::token::{Token, Tokens};
 use crate::parser::statement::StatementNode;
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum Node {
+pub enum DeclareNode {
     Function(FunctionNode),
 }
-impl Node {
-    pub fn new(tokens: &mut Tokens) -> Node {
-        Node::Function(FunctionNode::new(tokens))
+impl DeclareNode {
+    pub fn new(tokens: &mut Tokens) -> DeclareNode {
+        DeclareNode::Function(FunctionNode::new(tokens))
     }
 }
 
