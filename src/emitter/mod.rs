@@ -78,20 +78,46 @@ fn emit_bin_exp(emitter: &mut Emitter, node: BinExpNode) -> Value {
     };
     let lhs = emit_expression(emitter, *node.lhs);
     let rhs = emit_expression(emitter, *node.rhs);
-    let lhs = match lhs {
-        Value::Int(val) => val,
-        _ => panic!(),
-    };
-    let rhs = match rhs {
-        Value::Int(val) => val,
-        _ => panic!(),
-    };
-    let val = match operator.as_ref() {
-        "+" => emitter.builder.build_int_add(lhs, rhs, "add"),
-        "*" => emitter.builder.build_int_mul(lhs, rhs, "mul"),
-        _ => panic!("unimpelemented operator."),
-    };
-    Value::Int(val)
+    match lhs {
+        Value::Int(lhs) => match rhs {
+            Value::Int(rhs) => {
+                let val = match operator.as_ref() {
+                    "+" => emitter.builder.build_int_add(lhs, rhs, "add"),
+                    "*" => emitter.builder.build_int_mul(lhs, rhs, "mul"),
+                    _ => panic!("unimpelemented operator."),
+                };
+                Value::Int(val)
+            }
+            Value::Float(rhs) => {
+                let lhs = lhs.const_signed_to_float(emitter.context.f32_type());
+                let val = match operator.as_ref() {
+                    "+" => emitter.builder.build_float_add(lhs, rhs, "add"),
+                    "*" => emitter.builder.build_float_mul(lhs, rhs, "mul"),
+                    _ => panic!("unimpelemented operator."),
+                };
+                Value::Float(val)
+            }
+        },
+        Value::Float(lhs) => match rhs {
+            Value::Int(rhs) => {
+                let rhs = rhs.const_signed_to_float(emitter.context.f32_type());
+                let val = match operator.as_ref() {
+                    "+" => emitter.builder.build_float_add(lhs, rhs, "add"),
+                    "*" => emitter.builder.build_float_mul(lhs, rhs, "mul"),
+                    _ => panic!("unimpelemented operator."),
+                };
+                Value::Float(val)
+            }
+            Value::Float(rhs) => {
+                let val = match operator.as_ref() {
+                    "+" => emitter.builder.build_float_add(lhs, rhs, "add"),
+                    "*" => emitter.builder.build_float_mul(lhs, rhs, "mul"),
+                    _ => panic!("unimpelemented operator."),
+                };
+                Value::Float(val)
+            }
+        },
+    }
 }
 fn emit_token(emitter: &mut Emitter, node: TokenNode) -> Value {
     match node.token {

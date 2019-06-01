@@ -48,3 +48,9 @@ fn test_single_float() {
     let filepath = "./tests/resources/test_single_float.c";
     run(filepath, "7");
 }
+
+#[test]
+fn test_float_exp() {
+    let filepath = "./tests/resources/test_float_exp.c";
+    run(filepath, "6");
+}
