@@ -27,6 +27,7 @@ impl FunctionNode {
             _ => panic!(),
         }; // consume main
         tokens.pop(); // consume (
+        tokens.pop(); // consume )
         tokens.pop(); // consume {
 
         let statement = StatementNode::new(tokens); // consume return val;

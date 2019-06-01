@@ -34,6 +34,8 @@ impl Lexer {
             ("NUM", r"(\d+(\.\d)*)"),
             ("SQUARE_E", r"\]"),
             ("PAREN_E", r"\)"),
+            ("CURLY_S", r"\{"),
+            ("CURLY_E", r"\}"),
             ("PREFIXOP", r"(\s|^)\+\+"),
             ("SUFFIXOP", r"(\+\+(\s|$)|\[|\()"),
             ("OP", r"(\+|-|\*|=|,)"),
@@ -67,6 +69,8 @@ impl Lexer {
                 )),
                 "SQUARE_E" => tokens.push(Token::SquareE),
                 "PAREN_E" => tokens.push(Token::ParenE),
+                "CURLY_S" => tokens.push(Token::CurlyS),
+                "CURLY_E" => tokens.push(Token::CurlyE),
                 "PREFIXOP" => {
                     let val = val.trim_start().to_string();
                     tokens.push(Token::PrefixOp(val));
