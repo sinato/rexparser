@@ -31,7 +31,8 @@ impl Lexer {
         let token_patterns = vec![
             ("COLON", r":"),
             ("QUESTION", r"\?"),
-            ("NUM", r"(\d+(\.\d)*)"),
+            ("FLOAT_NUM", r"(\d+\.\d+)"),
+            ("INT_NUM", r"(\d+)"),
             ("SEMI", r";"),
             ("SQUARE_E", r"\]"),
             ("PAREN_E", r"\)"),
@@ -64,10 +65,8 @@ impl Lexer {
             match typ.as_ref() {
                 "COLON" => tokens.push(Token::Colon),
                 "QUESTION" => tokens.push(Token::Question),
-                "NUM" => tokens.push(Token::Num(
-                    val.parse::<i32>()
-                        .expect("something went wrong parsing a number"),
-                )),
+                "FLOAT_NUM" => tokens.push(Token::FloatNum(val)),
+                "INT_NUM" => tokens.push(Token::IntNum(val)),
                 "SEMI" => tokens.push(Token::Semi),
                 "SQUARE_E" => tokens.push(Token::SquareE),
                 "PAREN_E" => tokens.push(Token::ParenE),

@@ -12,7 +12,8 @@ pub struct Property {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
-    Num(i32),
+    FloatNum(String),
+    IntNum(String),
     Op(String, Property),
     PrefixOp(String),
     SuffixOp(String),
@@ -28,7 +29,8 @@ pub enum Token {
 impl Token {
     pub fn get_len(&self) -> usize {
         match self {
-            Token::Num(num) => num.to_string().len(),
+            Token::FloatNum(num) => num.to_string().len(),
+            Token::IntNum(num) => num.to_string().len(),
             Token::Op(op, _) => op.len(),
             Token::PrefixOp(op) => op.len(),
             Token::SuffixOp(op) => op.len(),
@@ -40,7 +42,8 @@ impl Token {
 impl std::fmt::Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            Token::Num(num) => write!(f, "{}", num),
+            Token::FloatNum(num) => write!(f, "{}", num),
+            Token::IntNum(num) => write!(f, "{}", num),
             Token::Op(op, _) => write!(f, "{}", op),
             Token::PrefixOp(op) => write!(f, "{}", op),
             Token::SuffixOp(op) => write!(f, "{}", op),

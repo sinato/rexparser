@@ -29,7 +29,7 @@ mod tests {
 
     fn get_num(num: i32) -> ExpressionNode {
         ExpressionNode::Token(TokenNode {
-            token: Token::Num(num),
+            token: Token::IntNum(num.to_string()),
         })
     }
 

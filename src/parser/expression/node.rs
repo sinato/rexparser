@@ -25,7 +25,7 @@ impl ExpressionNode {
     fn new_with_prefix(tokens: &mut Tokens) -> ExpressionNode {
         match tokens.peek() {
             Some(token) => match token {
-                Token::Ide(_) | Token::Num(_) => TokenNode::new(tokens),
+                Token::Ide(_) | Token::IntNum(_) | Token::FloatNum(_) => TokenNode::new(tokens),
                 Token::PrefixOp(_) => PrefixNode::new(tokens),
                 Token::Op(op, _property) => match op.as_ref() {
                     // treat as a sing operator

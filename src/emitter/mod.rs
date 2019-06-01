@@ -1,7 +1,7 @@
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::module::Module;
-use inkwell::values::IntValue;
+use inkwell::values::{FloatValue, IntValue};
 
 use std::path;
 
@@ -9,6 +9,11 @@ use crate::lexer::token::*;
 use crate::parser::declare::DeclareNode;
 use crate::parser::expression::node::{BinExpNode, ExpressionNode, TokenNode};
 use crate::parser::statement::*;
+
+pub enum Value {
+    Int(IntValue),
+    Float(FloatValue),
+}
 
 pub struct Emitter {
     pub context: Context,
@@ -51,10 +56,14 @@ fn emit_function(emitter: &mut Emitter, node: DeclareNode) {
 
 fn emit_statement(emitter: &mut Emitter, node: StatementNode) {
     let ret = emit_expression(emitter, node.expression);
+    let ret = match ret {
+        Value::Int(val) => val,
+        Value::Float(val) => val.const_to_signed_int(emitter.context.i32_type()),
+    };
     emitter.builder.build_return(Some(&ret));
 }
 
-fn emit_expression(emitter: &mut Emitter, node: ExpressionNode) -> IntValue {
+fn emit_expression(emitter: &mut Emitter, node: ExpressionNode) -> Value {
     match node {
         ExpressionNode::BinExp(node) => emit_bin_exp(emitter, node),
         ExpressionNode::Token(node) => emit_token(emitter, node),
@@ -62,22 +71,40 @@ fn emit_expression(emitter: &mut Emitter, node: ExpressionNode) -> IntValue {
     }
 }
 
-fn emit_bin_exp(emitter: &mut Emitter, node: BinExpNode) -> IntValue {
+fn emit_bin_exp(emitter: &mut Emitter, node: BinExpNode) -> Value {
     let operator = match node.op.token {
         Token::Op(op, _) => op,
         _ => panic!(),
     };
     let lhs = emit_expression(emitter, *node.lhs);
     let rhs = emit_expression(emitter, *node.rhs);
-    match operator.as_ref() {
+    let lhs = match lhs {
+        Value::Int(val) => val,
+        _ => panic!(),
+    };
+    let rhs = match rhs {
+        Value::Int(val) => val,
+        _ => panic!(),
+    };
+    let val = match operator.as_ref() {
         "+" => emitter.builder.build_int_add(lhs, rhs, "add"),
         "*" => emitter.builder.build_int_mul(lhs, rhs, "mul"),
         _ => panic!("unimpelemented operator."),
-    }
+    };
+    Value::Int(val)
 }
-fn emit_token(emitter: &mut Emitter, node: TokenNode) -> IntValue {
+fn emit_token(emitter: &mut Emitter, node: TokenNode) -> Value {
     match node.token {
-        Token::Num(val) => emitter.context.i32_type().const_int(val as u64, false),
+        Token::IntNum(val) => {
+            let val: u64 = val.parse().unwrap();
+            let val = emitter.context.i32_type().const_int(val, false);
+            Value::Int(val)
+        }
+        Token::FloatNum(val) => {
+            let val: f64 = val.parse().unwrap();
+            let val = emitter.context.f32_type().const_float(val);
+            Value::Float(val)
+        }
         _ => panic!(),
     }
 }
