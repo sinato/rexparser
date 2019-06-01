@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 pub mod parser;
 
 use crate::lexer::token::*;
@@ -17,7 +19,7 @@ impl DeclareNode {
 pub struct FunctionNode {
     pub identifier: String,
     pub return_type: BasicType,
-    pub statement: StatementNode,
+    pub statements: VecDeque<StatementNode>,
 }
 impl FunctionNode {
     pub fn new(tokens: &mut Tokens) -> FunctionNode {
@@ -34,13 +36,20 @@ impl FunctionNode {
         tokens.pop(); // consume )
         tokens.pop(); // consume {
 
-        let statement = StatementNode::new(tokens); // consume return val;
-        tokens.pop(); // consume }
+        let mut statements: VecDeque<StatementNode> = VecDeque::new();
+        loop {
+            if let Some(Token::CurlyE) = tokens.peek() {
+                tokens.pop(); // consume }
+                break;
+            }
+            let statement = StatementNode::new(tokens);
+            statements.push_back(statement);
+        }
 
         FunctionNode {
             identifier,
             return_type,
-            statement,
+            statements,
         }
     }
 }

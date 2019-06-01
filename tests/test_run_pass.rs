@@ -54,3 +54,9 @@ fn test_float_exp() {
     let filepath = "./tests/resources/test_float_exp.c";
     run(filepath, "6");
 }
+
+#[test]
+fn test_int_declare() {
+    let filepath = "./tests/resources/test_int_declare.c";
+    run(filepath, "42");
+}

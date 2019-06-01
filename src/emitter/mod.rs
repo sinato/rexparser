@@ -44,19 +44,22 @@ fn emit_function(emitter: &mut Emitter, node: DeclareNode) {
         DeclareNode::Function(node) => node,
     };
     let identifier = function_node.identifier;
-    let statement_node = function_node.statement;
+    let mut statement_nodes = function_node.statements;
 
     let fn_type = emitter.context.i32_type().fn_type(&[], false);
     let func = emitter.module.add_function(&identifier, fn_type, None);
 
     let basic_block = emitter.context.append_basic_block(&func, "entry");
     emitter.builder.position_at_end(&basic_block);
-    emit_statement(emitter, statement_node, function_node.return_type);
+    while let Some(statement_node) = statement_nodes.pop_front() {
+        emit_statement(emitter, statement_node, function_node.return_type.clone());
+    }
 }
 
 fn emit_statement(emitter: &mut Emitter, node: StatementNode, return_type: BasicType) {
     match node {
         StatementNode::Return(node) => emit_return_statement(emitter, node, return_type),
+        StatementNode::Declare(node) => emit_declare_statement(emitter, node),
     }
 }
 
@@ -71,6 +74,10 @@ fn emit_return_statement(emitter: &mut Emitter, node: ReturnStatementNode, retur
             emitter.builder.build_return(Some(&ret));
         }
     }
+}
+
+fn emit_declare_statement(emitter: &mut Emitter, node: DeclareStatementNode) {
+    // TODO implement
 }
 
 fn emit_expression(emitter: &mut Emitter, node: ExpressionNode) -> Value {

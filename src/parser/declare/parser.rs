@@ -43,12 +43,43 @@ mod tests {
         let return_type = BasicType::Int;
         let expression = get_num(1);
         let statement = StatementNode::Return(ReturnStatementNode { expression });
+        let mut statements: VecDeque<StatementNode> = VecDeque::new();
+        statements.push_back(statement);
         let expected = DeclareNode::Function(FunctionNode {
             identifier,
             return_type,
-            statement,
+            statements,
         });
+        assert_eq!(actual, expected);
+    }
 
+    #[test]
+    fn test_parse_int_declare() {
+        let code = get_code("test_int_declare.c");
+        let actual = run(code);
+
+        let identifier = String::from("main");
+        let return_type = BasicType::Int;
+
+        let mut statements: VecDeque<StatementNode> = VecDeque::new();
+
+        let statement = StatementNode::Declare(DeclareStatementNode {
+            value_type: BasicType::Int,
+            identifier: String::from("a"),
+            initialize_expression: None,
+        });
+        statements.push_back(statement);
+
+        let statement = StatementNode::Return(ReturnStatementNode {
+            expression: get_num(42),
+        });
+        statements.push_back(statement);
+
+        let expected = DeclareNode::Function(FunctionNode {
+            identifier,
+            return_type,
+            statements,
+        });
         assert_eq!(actual, expected);
     }
 }
