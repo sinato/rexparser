@@ -32,6 +32,7 @@ impl Lexer {
             ("COLON", r":"),
             ("QUESTION", r"\?"),
             ("NUM", r"(\d+(\.\d)*)"),
+            ("SEMI", r";"),
             ("SQUARE_E", r"\]"),
             ("PAREN_E", r"\)"),
             ("CURLY_S", r"\{"),
@@ -67,6 +68,7 @@ impl Lexer {
                     val.parse::<i32>()
                         .expect("something went wrong parsing a number"),
                 )),
+                "SEMI" => tokens.push(Token::Semi),
                 "SQUARE_E" => tokens.push(Token::SquareE),
                 "PAREN_E" => tokens.push(Token::ParenE),
                 "CURLY_S" => tokens.push(Token::CurlyS),
