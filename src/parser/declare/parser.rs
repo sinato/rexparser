@@ -40,7 +40,7 @@ mod tests {
 
         let identifier = String::from("main");
         let expression = get_num(1);
-        let statement = StatementNode { expression };
+        let statement = StatementNode::Return(ReturnStatementNode { expression });
         let expected = DeclareNode::Function(FunctionNode {
             identifier,
             statement,

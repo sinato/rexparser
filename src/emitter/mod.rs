@@ -55,6 +55,12 @@ fn emit_function(emitter: &mut Emitter, node: DeclareNode) {
 }
 
 fn emit_statement(emitter: &mut Emitter, node: StatementNode) {
+    match node {
+        StatementNode::Return(node) => emit_return_statement(emitter, node),
+    }
+}
+
+fn emit_return_statement(emitter: &mut Emitter, node: ReturnStatementNode) {
     let ret = emit_expression(emitter, node.expression);
     let ret = match ret {
         Value::Int(val) => val,
