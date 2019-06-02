@@ -96,3 +96,9 @@ fn test_multi_dim_array() {
     let filepath = "./tests/resources/test_multi_dim_array.c";
     run(filepath, "66");
 }
+
+#[test]
+fn test_function() {
+    let filepath = "./tests/resources/test_function.c";
+    run(filepath, "55");
+}

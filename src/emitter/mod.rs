@@ -11,6 +11,7 @@ use crate::lexer::token::*;
 use crate::parser::declare::DeclareNode;
 use crate::parser::expression::node::*;
 use crate::parser::statement::*;
+use crate::parser::ProgramNode;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Value {
@@ -59,11 +60,17 @@ impl Emitter {
     pub fn print_to_file(&self) {
         let _ = self.module.print_to_file(path::Path::new("compiled.ll"));
     }
-    pub fn emit(&mut self, node: DeclareNode) {
-        emit_function(self, node)
+    pub fn emit(&mut self, node: ProgramNode) {
+        emit_program(self, node);
     }
 }
 
+fn emit_program(emitter: &mut Emitter, node: ProgramNode) {
+    let mut declares = node.declares;
+    while let Some(declare) = declares.pop_front() {
+        emit_function(emitter, declare)
+    }
+}
 fn emit_function(emitter: &mut Emitter, node: DeclareNode) {
     let function_node = match node {
         DeclareNode::Function(node) => node,
@@ -160,6 +167,7 @@ fn emit_expression(emitter: &mut Emitter, node: ExpressionNode) -> Value {
         ExpressionNode::Token(node) => emit_token(emitter, node),
         ExpressionNode::Prefix(node) => emit_prefix(emitter, node),
         ExpressionNode::ArrayIndex(node) => emit_array_index(emitter, node),
+        ExpressionNode::FunctionCall(node) => emit_function_call(emitter, node),
         _ => panic!(""),
     }
 }
@@ -403,4 +411,23 @@ fn emit_array_index(emitter: &mut Emitter, node: ArrayIndexNode) -> Value {
         BasicType::Int => Value::Int(val.into_int_value()),
         _ => panic!("TODO"),
     }
+}
+
+fn emit_function_call(emitter: &mut Emitter, node: FunctionCallNode) -> Value {
+    let identifier = match node.identifier.token {
+        Token::Ide(identifier) => identifier,
+        _ => panic!(),
+    };
+    let _parameters = node.parameters;
+    let fn_value = match emitter.module.get_function(&identifier) {
+        Some(value) => value,
+        None => panic!(format!("call of undeclared function {}", identifier)),
+    };
+    let func_call_site = emitter.builder.build_call(fn_value, &[], "");
+    let val = func_call_site
+        .try_as_basic_value()
+        .left()
+        .unwrap()
+        .into_int_value();
+    Value::Int(val)
 }
