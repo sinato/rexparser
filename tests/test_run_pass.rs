@@ -90,3 +90,9 @@ fn test_array2() {
     let filepath = "./tests/resources/test_array2.c";
     run(filepath, "22");
 }
+
+#[test]
+fn test_multi_dim_array() {
+    let filepath = "./tests/resources/test_multi_dim_array.c";
+    run(filepath, "66");
+}

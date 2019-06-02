@@ -139,6 +139,14 @@ fn emit_declare_statement_alloca(
         BasicType::Array(boxed_type, size) => {
             let array_type = match *boxed_type {
                 BasicType::Int => emitter.context.i32_type().array_type(size),
+                BasicType::Array(boxed_type, size2) => match *boxed_type {
+                    BasicType::Int => emitter
+                        .context
+                        .i32_type()
+                        .array_type(size2)
+                        .array_type(size),
+                    _ => panic!("TODO"),
+                },
                 _ => panic!("TODO"),
             };
             emitter.builder.build_alloca(array_type, "")
@@ -179,33 +187,15 @@ fn emit_expression_as_pointer(
                 Value::Int(val) => val,
                 _ => panic!(),
             };
-
-            // get idenfitier from arrayNode
-            let identifier = match array.clone() {
-                ExpressionNode::Token(token_node) => match token_node.token {
-                    Token::Ide(identifier) => identifier,
-                    _ => panic!(),
-                },
-                _ => panic!(),
+            let (array_alloca, _, identifier) = emit_expression_as_pointer(emitter, array);
+            let alloca = unsafe {
+                emitter.builder.build_gep(
+                    array_alloca,
+                    &[emitter.context.i32_type().const_int(0, false), index],
+                    "",
+                )
             };
-            let (array_alloca, val_type, _size) = match emit_expression(emitter, array) {
-                Value::Array(alloca, val_type, size) => (alloca, val_type, size),
-                _ => panic!(),
-            };
-
-            match val_type {
-                BasicType::Int => {
-                    let alloca = unsafe {
-                        emitter.builder.build_gep(
-                            array_alloca,
-                            &[emitter.context.i32_type().const_int(0, false), index],
-                            "",
-                        )
-                    };
-                    (alloca, BasicType::Int, identifier)
-                }
-                _ => panic!("TODO"),
-            }
+            (alloca, BasicType::Int, identifier)
         }
         _ => panic!(),
     }

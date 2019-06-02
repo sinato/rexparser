@@ -72,18 +72,23 @@ impl DeclareStatementNode {
             _ => panic!(),
         };
 
-        if let Some(Token::SuffixOp(op)) = tokens.peek() {
+        let mut array_size_vec: Vec<u32> = Vec::new();
+        while let Some(Token::SuffixOp(op)) = tokens.peek() {
             if op == "[" {
                 tokens.pop(); // consume [
                 let num = match tokens.pop().unwrap() {
                     Token::IntNum(num) => num.parse().unwrap(),
                     _ => panic!(),
                 };
-                value_type = BasicType::Array(Box::new(value_type), num);
+                array_size_vec.push(num);
                 tokens.pop(); // consume ]
+            } else {
+                break;
             }
         }
-
+        while let Some(size) = array_size_vec.pop() {
+            value_type = BasicType::Array(Box::new(value_type), size);
+        }
         let initialize_expression = None;
         match tokens.pop().unwrap() {
             Token::Semi => (),
