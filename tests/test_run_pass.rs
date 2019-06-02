@@ -72,3 +72,9 @@ fn test_float_variable() {
     let filepath = "./tests/resources/test_float_variable.c";
     run(filepath, "2");
 }
+
+#[test]
+fn test_pointer() {
+    let filepath = "./tests/resources/test_pointer.c";
+    run(filepath, "24");
+}

@@ -28,8 +28,8 @@ impl ExpressionNode {
                 Token::Ide(_) | Token::IntNum(_) | Token::FloatNum(_) => TokenNode::new(tokens),
                 Token::PrefixOp(_) => PrefixNode::new(tokens),
                 Token::Op(op, _property) => match op.as_ref() {
-                    // treat as a sing operator
-                    "+" | "-" => {
+                    // treat as an operator
+                    "+" | "-" | "*" => {
                         tokens.pop(); // consume "+" | "-"
                         let node = ExpressionNode::new(tokens);
                         ExpressionNode::Prefix(PrefixNode {

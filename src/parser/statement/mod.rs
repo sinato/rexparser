@@ -57,10 +57,16 @@ pub struct DeclareStatementNode {
 }
 impl DeclareStatementNode {
     pub fn new(tokens: &mut Tokens) -> DeclareStatementNode {
-        let value_type = match tokens.pop().unwrap() {
+        let mut value_type = match tokens.pop().unwrap() {
             Token::Type(val) => val,
             _ => panic!(),
         };
+        if let Some(Token::Op(op, _)) = tokens.peek() {
+            if op == "*" {
+                value_type = BasicType::Pointer(Box::new(value_type));
+                tokens.pop();
+            }
+        }
         let identifier = match tokens.pop().unwrap() {
             Token::Ide(val) => val,
             _ => panic!(),

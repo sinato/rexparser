@@ -40,10 +40,10 @@ impl Lexer {
             ("PAREN_E", r"\)"),
             ("CURLY_S", r"\{"),
             ("CURLY_E", r"\}"),
-            ("PREFIXOP", r"(\s|^)\+\+"),
+            ("PREFIXOP", r"((\s|^)\+\+)|&"),
             ("SUFFIXOP", r"(\+\+(\s|$)|\[|\()"),
             ("OP", r"(\+|-|\*|=|,)"),
-            ("IDE", r"[a-z]+"),
+            ("IDE", r"[a-z_]+"),
         ];
         let re = make_regex(&token_patterns);
         let names = get_names(&token_patterns);

@@ -14,6 +14,7 @@ pub struct Property {
 pub enum BasicType {
     Int,
     Float,
+    Pointer(Box<BasicType>),
 }
 
 #[derive(Debug, PartialEq, Clone)]
