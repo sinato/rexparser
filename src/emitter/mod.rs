@@ -1,6 +1,7 @@
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::module::Module;
+use inkwell::values::InstructionOpcode;
 use inkwell::values::{FloatValue, IntValue, PointerValue};
 
 use std::collections::HashMap;
@@ -95,24 +96,33 @@ fn emit_return_statement(emitter: &mut Emitter, node: ReturnStatementNode, retur
         BasicType::Int => {
             let ret = match ret {
                 Value::Int(val) => val,
-                Value::Float(val) => val.const_to_signed_int(emitter.context.i32_type()),
+                Value::Float(val) => {
+                    let opcode = InstructionOpcode::FPToSI;
+                    let to_type = emitter.context.i32_type();
+                    emitter
+                        .builder
+                        .build_cast(opcode, val, to_type, "convert")
+                        .into_int_value()
+                }
             };
             emitter.builder.build_return(Some(&ret));
         }
+        _ => panic!(),
     }
 }
 
 fn emit_declare_statement(emitter: &mut Emitter, node: DeclareStatementNode) {
     let identifier = node.identifier;
     let value_type = node.value_type;
-    match value_type {
-        BasicType::Int => {
-            let alloca = emitter
-                .builder
-                .build_alloca(emitter.context.i32_type(), &identifier);
-            emitter.environment.insert(identifier, (alloca, value_type));
-        }
-    }
+    let alloca = match value_type {
+        BasicType::Int => emitter
+            .builder
+            .build_alloca(emitter.context.i32_type(), &identifier),
+        BasicType::Float => emitter
+            .builder
+            .build_alloca(emitter.context.f32_type(), &identifier),
+    };
+    emitter.environment.insert(identifier, (alloca, value_type));
 }
 
 fn emit_expression(emitter: &mut Emitter, node: ExpressionNode) -> Value {
@@ -159,6 +169,13 @@ fn emit_bin_exp(emitter: &mut Emitter, node: BinExpNode) -> Value {
                         Value::Int(val)
                     }
                     Value::Float(_val) => panic!("TODO"),
+                },
+                BasicType::Float => match val {
+                    Value::Int(_val) => panic!("TODO"),
+                    Value::Float(val) => {
+                        emitter.builder.build_store(alloca, val);
+                        Value::Float(val)
+                    }
                 },
             }
         }
@@ -231,6 +248,13 @@ fn emit_token(emitter: &mut Emitter, node: TokenNode) -> Value {
                             .build_load(alloca, &identifier)
                             .into_int_value();
                         Value::Int(val)
+                    }
+                    BasicType::Float => {
+                        let val = emitter
+                            .builder
+                            .build_load(alloca, &identifier)
+                            .into_float_value();
+                        Value::Float(val)
                     }
                 },
                 None => panic!(format!("use of undeclared identifier {}", identifier)),

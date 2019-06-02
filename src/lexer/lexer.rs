@@ -34,7 +34,7 @@ impl Lexer {
             ("FLOAT_NUM", r"(\d+\.\d+)"),
             ("INT_NUM", r"(\d+)"),
             ("SEMI", r";"),
-            ("TYPE", r"int"),
+            ("TYPE", r"(int)|(float)"),
             ("RETURN", r"return"),
             ("SQUARE_E", r"\]"),
             ("PAREN_E", r"\)"),
@@ -72,6 +72,7 @@ impl Lexer {
                 "SEMI" => tokens.push(Token::Semi),
                 "TYPE" => match val.as_ref() {
                     "int" => tokens.push(Token::Type(BasicType::Int)),
+                    "float" => tokens.push(Token::Type(BasicType::Float)),
                     _ => panic!("Unimplemented type."),
                 },
                 "RETURN" => tokens.push(Token::Return),

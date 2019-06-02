@@ -13,6 +13,7 @@ pub struct Property {
 #[derive(Debug, PartialEq, Clone)]
 pub enum BasicType {
     Int,
+    Float,
 }
 
 #[derive(Debug, PartialEq, Clone)]
