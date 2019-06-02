@@ -4,6 +4,7 @@ use crate::parser::expression::parser::toplevel;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum StatementNode {
+    Expression(ExpressionStatementNode),
     Return(ReturnStatementNode),
     Declare(DeclareStatementNode),
 }
@@ -11,8 +12,24 @@ impl StatementNode {
     pub fn new(tokens: &mut Tokens) -> StatementNode {
         match tokens.peek().unwrap() {
             Token::Type(_) => StatementNode::Declare(DeclareStatementNode::new(tokens)),
-            _ => StatementNode::Return(ReturnStatementNode::new(tokens)),
+            Token::Return => StatementNode::Return(ReturnStatementNode::new(tokens)),
+            _ => StatementNode::Expression(ExpressionStatementNode::new(tokens)),
         }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct ExpressionStatementNode {
+    pub expression: ExpressionNode,
+}
+impl ExpressionStatementNode {
+    pub fn new(tokens: &mut Tokens) -> ExpressionStatementNode {
+        let expression = toplevel(tokens);
+        match tokens.pop().unwrap() {
+            Token::Semi => (),
+            _ => panic!(),
+        };
+        ExpressionStatementNode { expression }
     }
 }
 

@@ -1,8 +1,9 @@
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::module::Module;
-use inkwell::values::{FloatValue, IntValue};
+use inkwell::values::{FloatValue, IntValue, PointerValue};
 
+use std::collections::HashMap;
 use std::path;
 
 use crate::lexer::token::*;
@@ -15,20 +16,40 @@ pub enum Value {
     Float(FloatValue),
 }
 
+pub struct Environment {
+    variables: HashMap<String, (PointerValue, BasicType)>,
+}
+impl Environment {
+    fn new() -> Environment {
+        let variables: HashMap<String, (PointerValue, BasicType)> = HashMap::new();
+        Environment { variables }
+    }
+    fn insert(
+        &mut self,
+        key: String,
+        value: (PointerValue, BasicType),
+    ) -> Option<(PointerValue, BasicType)> {
+        self.variables.insert(key, value)
+    }
+}
+
 pub struct Emitter {
     pub context: Context,
     pub builder: Builder,
     pub module: Module,
+    pub environment: Environment,
 }
 impl Emitter {
     pub fn new() -> Emitter {
         let context = Context::create();
         let builder = context.create_builder();
         let module = context.create_module("my_module");
+        let environment = Environment::new();
         Emitter {
             context,
             builder,
             module,
+            environment,
         }
     }
     pub fn print_to_file(&self) {
@@ -58,9 +79,14 @@ fn emit_function(emitter: &mut Emitter, node: DeclareNode) {
 
 fn emit_statement(emitter: &mut Emitter, node: StatementNode, return_type: BasicType) {
     match node {
+        StatementNode::Expression(node) => emit_expression_statement(emitter, node),
         StatementNode::Return(node) => emit_return_statement(emitter, node, return_type),
         StatementNode::Declare(node) => emit_declare_statement(emitter, node),
     }
+}
+
+fn emit_expression_statement(emitter: &mut Emitter, node: ExpressionStatementNode) {
+    emit_expression(emitter, node.expression);
 }
 
 fn emit_return_statement(emitter: &mut Emitter, node: ReturnStatementNode, return_type: BasicType) {
@@ -77,7 +103,16 @@ fn emit_return_statement(emitter: &mut Emitter, node: ReturnStatementNode, retur
 }
 
 fn emit_declare_statement(emitter: &mut Emitter, node: DeclareStatementNode) {
-    // TODO implement
+    let identifier = node.identifier;
+    let value_type = node.value_type;
+    match value_type {
+        BasicType::Int => {
+            let alloca = emitter
+                .builder
+                .build_alloca(emitter.context.i32_type(), &identifier);
+            emitter.environment.insert(identifier, (alloca, value_type));
+        }
+    }
 }
 
 fn emit_expression(emitter: &mut Emitter, node: ExpressionNode) -> Value {
@@ -88,52 +123,90 @@ fn emit_expression(emitter: &mut Emitter, node: ExpressionNode) -> Value {
     }
 }
 
+fn emit_expression_as_pointer(
+    emitter: &mut Emitter,
+    node: ExpressionNode,
+) -> (PointerValue, BasicType) {
+    match node {
+        ExpressionNode::BinExp(_node) => panic!("TODO: implement"),
+        ExpressionNode::Token(node) => match node.token {
+            Token::Ide(identifier) => {
+                match emitter.environment.variables.clone().remove(&identifier) {
+                    Some((alloca, variable_type)) => (alloca, variable_type),
+                    None => panic!(format!("use of undeclared identifier {}", identifier)),
+                }
+            }
+            _ => panic!(),
+        },
+        _ => panic!(),
+    }
+}
+
 fn emit_bin_exp(emitter: &mut Emitter, node: BinExpNode) -> Value {
     let operator = match node.op.token {
         Token::Op(op, _) => op,
         _ => panic!(),
     };
-    let lhs = emit_expression(emitter, *node.lhs);
-    let rhs = emit_expression(emitter, *node.rhs);
-    match lhs {
-        Value::Int(lhs) => match rhs {
-            Value::Int(rhs) => {
-                let val = match operator.as_ref() {
-                    "+" => emitter.builder.build_int_add(lhs, rhs, "add"),
-                    "*" => emitter.builder.build_int_mul(lhs, rhs, "mul"),
-                    _ => panic!("unimpelemented operator."),
-                };
-                Value::Int(val)
+    match operator.as_ref() {
+        "=" => {
+            let (alloca, variable_type): (PointerValue, BasicType) =
+                emit_expression_as_pointer(emitter, *node.lhs);
+            let val: Value = emit_expression(emitter, *node.rhs);
+            match variable_type {
+                BasicType::Int => match val {
+                    Value::Int(val) => {
+                        emitter.builder.build_store(alloca, val);
+                        Value::Int(val)
+                    }
+                    Value::Float(_val) => panic!("TODO"),
+                },
             }
-            Value::Float(rhs) => {
-                let lhs = lhs.const_signed_to_float(emitter.context.f32_type());
-                let val = match operator.as_ref() {
-                    "+" => emitter.builder.build_float_add(lhs, rhs, "add"),
-                    "*" => emitter.builder.build_float_mul(lhs, rhs, "mul"),
-                    _ => panic!("unimpelemented operator."),
-                };
-                Value::Float(val)
+        }
+        _ => {
+            let lhs = emit_expression(emitter, *node.lhs);
+            let rhs = emit_expression(emitter, *node.rhs);
+
+            match lhs {
+                Value::Int(lhs) => match rhs {
+                    Value::Int(rhs) => {
+                        let val = match operator.as_ref() {
+                            "+" => emitter.builder.build_int_add(lhs, rhs, "add"),
+                            "*" => emitter.builder.build_int_mul(lhs, rhs, "mul"),
+                            _ => panic!("unimpelemented operator."),
+                        };
+                        Value::Int(val)
+                    }
+                    Value::Float(rhs) => {
+                        let lhs = lhs.const_signed_to_float(emitter.context.f32_type());
+                        let val = match operator.as_ref() {
+                            "+" => emitter.builder.build_float_add(lhs, rhs, "add"),
+                            "*" => emitter.builder.build_float_mul(lhs, rhs, "mul"),
+                            _ => panic!("unimpelemented operator."),
+                        };
+                        Value::Float(val)
+                    }
+                },
+                Value::Float(lhs) => match rhs {
+                    Value::Int(rhs) => {
+                        let rhs = rhs.const_signed_to_float(emitter.context.f32_type());
+                        let val = match operator.as_ref() {
+                            "+" => emitter.builder.build_float_add(lhs, rhs, "add"),
+                            "*" => emitter.builder.build_float_mul(lhs, rhs, "mul"),
+                            _ => panic!("unimpelemented operator."),
+                        };
+                        Value::Float(val)
+                    }
+                    Value::Float(rhs) => {
+                        let val = match operator.as_ref() {
+                            "+" => emitter.builder.build_float_add(lhs, rhs, "add"),
+                            "*" => emitter.builder.build_float_mul(lhs, rhs, "mul"),
+                            _ => panic!("unimpelemented operator."),
+                        };
+                        Value::Float(val)
+                    }
+                },
             }
-        },
-        Value::Float(lhs) => match rhs {
-            Value::Int(rhs) => {
-                let rhs = rhs.const_signed_to_float(emitter.context.f32_type());
-                let val = match operator.as_ref() {
-                    "+" => emitter.builder.build_float_add(lhs, rhs, "add"),
-                    "*" => emitter.builder.build_float_mul(lhs, rhs, "mul"),
-                    _ => panic!("unimpelemented operator."),
-                };
-                Value::Float(val)
-            }
-            Value::Float(rhs) => {
-                let val = match operator.as_ref() {
-                    "+" => emitter.builder.build_float_add(lhs, rhs, "add"),
-                    "*" => emitter.builder.build_float_mul(lhs, rhs, "mul"),
-                    _ => panic!("unimpelemented operator."),
-                };
-                Value::Float(val)
-            }
-        },
+        }
     }
 }
 fn emit_token(emitter: &mut Emitter, node: TokenNode) -> Value {
@@ -147,6 +220,21 @@ fn emit_token(emitter: &mut Emitter, node: TokenNode) -> Value {
             let val: f64 = val.parse().unwrap();
             let val = emitter.context.f32_type().const_float(val);
             Value::Float(val)
+        }
+        Token::Ide(val) => {
+            let identifier = val;
+            match emitter.environment.variables.clone().remove(&identifier) {
+                Some((alloca, variable_type)) => match variable_type {
+                    BasicType::Int => {
+                        let val = emitter
+                            .builder
+                            .build_load(alloca, &identifier)
+                            .into_int_value();
+                        Value::Int(val)
+                    }
+                },
+                None => panic!(format!("use of undeclared identifier {}", identifier)),
+            }
         }
         _ => panic!(),
     }

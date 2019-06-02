@@ -60,3 +60,9 @@ fn test_int_declare() {
     let filepath = "./tests/resources/test_int_declare.c";
     run(filepath, "42");
 }
+
+#[test]
+fn test_variable() {
+    let filepath = "./tests/resources/test_variable.c";
+    run(filepath, "10");
+}
