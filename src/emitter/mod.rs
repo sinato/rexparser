@@ -17,6 +17,7 @@ pub enum Value {
     Int(IntValue),
     Float(FloatValue),
     Pointer(PointerValue, BasicType),
+    Array(PointerValue, BasicType, u32),
 }
 
 pub struct Environment {
@@ -187,8 +188,8 @@ fn emit_expression_as_pointer(
                 },
                 _ => panic!(),
             };
-            let (array_alloca, val_type) = match emit_expression(emitter, array) {
-                Value::Pointer(alloca, val_type) => (alloca, val_type),
+            let (array_alloca, val_type, _size) = match emit_expression(emitter, array) {
+                Value::Array(alloca, val_type, size) => (alloca, val_type, size),
                 _ => panic!(),
             };
 
@@ -288,6 +289,8 @@ fn emit_bin_exp(emitter: &mut Emitter, node: BinExpNode) -> Value {
             let lhs = emit_expression(emitter, *node.lhs);
             let rhs = emit_expression(emitter, *node.rhs);
 
+            println!("lhs: {:?}", lhs);
+            println!("rhs: {:?}", rhs);
             match lhs {
                 Value::Int(lhs) => match rhs {
                     Value::Int(rhs) => {
@@ -366,7 +369,7 @@ fn emit_token(emitter: &mut Emitter, node: TokenNode) -> Value {
                         Value::Float(val)
                     }
                     BasicType::Pointer(val_type) => Value::Pointer(alloca, *val_type),
-                    BasicType::Array(val_type, _size) => Value::Pointer(alloca, *val_type),
+                    BasicType::Array(val_type, size) => Value::Array(alloca, *val_type, size),
                 },
                 None => panic!(format!("use of undeclared identifier {}", identifier)),
             }
