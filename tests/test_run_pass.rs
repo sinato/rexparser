@@ -78,3 +78,9 @@ fn test_pointer() {
     let filepath = "./tests/resources/test_pointer.c";
     run(filepath, "24");
 }
+
+#[test]
+fn test_array() {
+    let filepath = "./tests/resources/test_array.c";
+    run(filepath, "10");
+}

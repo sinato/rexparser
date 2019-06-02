@@ -135,6 +135,13 @@ fn emit_declare_statement_alloca(
         BasicType::Pointer(boxed_type) => {
             emit_declare_statement_alloca(emitter, identifier, *boxed_type)
         }
+        BasicType::Array(boxed_type, size) => {
+            let array_type = match *boxed_type {
+                BasicType::Int => emitter.context.i32_type().array_type(size),
+                _ => panic!("TODO"),
+            };
+            emitter.builder.build_alloca(array_type, "")
+        }
     }
 }
 
@@ -143,6 +150,7 @@ fn emit_expression(emitter: &mut Emitter, node: ExpressionNode) -> Value {
         ExpressionNode::BinExp(node) => emit_bin_exp(emitter, node),
         ExpressionNode::Token(node) => emit_token(emitter, node),
         ExpressionNode::Prefix(node) => emit_prefix(emitter, node),
+        ExpressionNode::ArrayIndex(node) => emit_array_index(emitter, node),
         _ => panic!(""),
     }
 }
@@ -162,6 +170,42 @@ fn emit_expression_as_pointer(
             }
             _ => panic!(),
         },
+        ExpressionNode::ArrayIndex(node) => {
+            let array: ExpressionNode = *node.array;
+            let index: ExpressionNode = *node.index;
+
+            let index = match emit_expression(emitter, index) {
+                Value::Int(val) => val,
+                _ => panic!(),
+            };
+
+            // get idenfitier from arrayNode
+            let identifier = match array.clone() {
+                ExpressionNode::Token(token_node) => match token_node.token {
+                    Token::Ide(identifier) => identifier,
+                    _ => panic!(),
+                },
+                _ => panic!(),
+            };
+            let (array_alloca, val_type) = match emit_expression(emitter, array) {
+                Value::Pointer(alloca, val_type) => (alloca, val_type),
+                _ => panic!(),
+            };
+
+            match val_type {
+                BasicType::Int => {
+                    let alloca = unsafe {
+                        emitter.builder.build_gep(
+                            array_alloca,
+                            &[emitter.context.i32_type().const_int(0, false), index],
+                            "",
+                        )
+                    };
+                    (alloca, BasicType::Int, identifier)
+                }
+                _ => panic!("TODO"),
+            }
+        }
         _ => panic!(),
     }
 }
@@ -237,6 +281,7 @@ fn emit_bin_exp(emitter: &mut Emitter, node: BinExpNode) -> Value {
                     },
                     _ => panic!("TODO"),
                 },
+                _ => panic!(),
             }
         }
         _ => {
@@ -289,6 +334,7 @@ fn emit_bin_exp(emitter: &mut Emitter, node: BinExpNode) -> Value {
         }
     }
 }
+
 fn emit_token(emitter: &mut Emitter, node: TokenNode) -> Value {
     match node.token {
         Token::IntNum(val) => {
@@ -320,10 +366,22 @@ fn emit_token(emitter: &mut Emitter, node: TokenNode) -> Value {
                         Value::Float(val)
                     }
                     BasicType::Pointer(val_type) => Value::Pointer(alloca, *val_type),
+                    BasicType::Array(val_type, _size) => Value::Pointer(alloca, *val_type),
                 },
                 None => panic!(format!("use of undeclared identifier {}", identifier)),
             }
         }
         _ => panic!(),
+    }
+}
+
+fn emit_array_index(emitter: &mut Emitter, node: ArrayIndexNode) -> Value {
+    let (alloca, val_type, identifier) =
+        emit_expression_as_pointer(emitter, ExpressionNode::ArrayIndex(node));
+
+    let val = emitter.builder.build_load(alloca, &identifier);
+    match val_type {
+        BasicType::Int => Value::Int(val.into_int_value()),
+        _ => panic!("TODO"),
     }
 }

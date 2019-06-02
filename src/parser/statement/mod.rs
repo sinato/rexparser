@@ -71,6 +71,19 @@ impl DeclareStatementNode {
             Token::Ide(val) => val,
             _ => panic!(),
         };
+
+        if let Some(Token::SuffixOp(op)) = tokens.peek() {
+            if op == "[" {
+                tokens.pop(); // consume [
+                let num = match tokens.pop().unwrap() {
+                    Token::IntNum(num) => num.parse().unwrap(),
+                    _ => panic!(),
+                };
+                value_type = BasicType::Array(Box::new(value_type), num);
+                tokens.pop(); // consume ]
+            }
+        }
+
         let initialize_expression = None;
         match tokens.pop().unwrap() {
             Token::Semi => (),
