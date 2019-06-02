@@ -84,3 +84,9 @@ fn test_array() {
     let filepath = "./tests/resources/test_array.c";
     run(filepath, "10");
 }
+
+#[test]
+fn test_array2() {
+    let filepath = "./tests/resources/test_array2.c";
+    run(filepath, "22");
+}

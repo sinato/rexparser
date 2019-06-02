@@ -278,6 +278,15 @@ fn emit_bin_exp(emitter: &mut Emitter, node: BinExpNode) -> Value {
                             }
                             _ => panic!("TODO"),
                         },
+                        Value::Array(val, val_type, size) => match val_type {
+                            BasicType::Int => {
+                                emitter
+                                    .environment
+                                    .insert(identifier, (val, BasicType::Array(boxed_type, size)));
+                                Value::Array(val, val_type, size)
+                            }
+                            _ => panic!("TODO"),
+                        },
                         _ => panic!("TODO"),
                     },
                     _ => panic!("TODO"),
@@ -289,8 +298,6 @@ fn emit_bin_exp(emitter: &mut Emitter, node: BinExpNode) -> Value {
             let lhs = emit_expression(emitter, *node.lhs);
             let rhs = emit_expression(emitter, *node.rhs);
 
-            println!("lhs: {:?}", lhs);
-            println!("rhs: {:?}", rhs);
             match lhs {
                 Value::Int(lhs) => match rhs {
                     Value::Int(rhs) => {
@@ -331,6 +338,25 @@ fn emit_bin_exp(emitter: &mut Emitter, node: BinExpNode) -> Value {
                         Value::Float(val)
                     }
                     _ => panic!("TODO"),
+                },
+                Value::Array(array_alloca, val_type, _size) => match rhs {
+                    Value::Int(rhs) => match val_type {
+                        BasicType::Int => {
+                            let alloca = match operator.as_ref() {
+                                "+" => unsafe {
+                                    emitter.builder.build_gep(
+                                        array_alloca,
+                                        &[emitter.context.i32_type().const_int(0, false), rhs],
+                                        "",
+                                    )
+                                },
+                                _ => panic!("unimpelemented operator."),
+                            };
+                            Value::Pointer(alloca, val_type)
+                        }
+                        _ => panic!("TODO"),
+                    },
+                    _ => panic!(),
                 },
                 _ => panic!("TODO"),
             }
