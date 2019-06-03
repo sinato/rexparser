@@ -16,6 +16,7 @@ pub enum BasicType {
     Float,
     Pointer(Box<BasicType>),
     Array(Box<BasicType>, u32),
+    Empty,
 }
 
 #[derive(Debug, PartialEq, Clone)]

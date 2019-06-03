@@ -125,6 +125,14 @@ fn emit_statement(emitter: &mut Emitter, node: StatementNode, return_type: Basic
         StatementNode::Expression(node) => emit_expression_statement(emitter, node),
         StatementNode::Return(node) => emit_return_statement(emitter, node, return_type),
         StatementNode::Declare(node) => emit_declare_statement(emitter, node),
+        StatementNode::Compound(node) => emit_compound_statement(emitter, node),
+    }
+}
+
+fn emit_compound_statement(emitter: &mut Emitter, node: CompoundStatementNode) {
+    let mut statements = node.statements;
+    while let Some(statement) = statements.pop_front() {
+        emit_statement(emitter, statement, BasicType::Empty);
     }
 }
 
@@ -196,6 +204,7 @@ fn emit_declare_statement_alloca(
             };
             emitter.builder.build_alloca(array_type, "")
         }
+        _ => panic!(),
     }
 }
 
@@ -442,6 +451,7 @@ fn emit_token(emitter: &mut Emitter, node: TokenNode) -> Value {
                     }
                     BasicType::Pointer(val_type) => Value::Pointer(alloca, *val_type),
                     BasicType::Array(val_type, size) => Value::Array(alloca, *val_type, size),
+                    _ => panic!(),
                 },
                 None => panic!(format!("use of undeclared identifier {}", identifier)),
             }
