@@ -40,7 +40,7 @@ fn test_mul() {
 #[test]
 fn test_multi_exp() {
     let filepath = "./tests/resources/test_multi_exp.c";
-    run(filepath, "11");
+    run(filepath, "15");
 }
 
 #[test]
@@ -65,6 +65,12 @@ fn test_int_declare() {
 fn test_variable() {
     let filepath = "./tests/resources/test_variable.c";
     run(filepath, "10");
+}
+
+#[test]
+fn test_variable2() {
+    let filepath = "./tests/resources/test_variable2.c";
+    run(filepath, "16");
 }
 
 #[test]

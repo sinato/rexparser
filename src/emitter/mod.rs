@@ -158,6 +158,12 @@ fn emit_declare_statement(emitter: &mut Emitter, node: DeclareStatementNode) {
     let identifier = node.identifier;
     let value_type = node.value_type;
     let alloca = emit_declare_statement_alloca(emitter, identifier.clone(), value_type.clone());
+
+    let initialize_exp = node.initialize_expression;
+    if let Some(node) = initialize_exp {
+        let val = emit_expression(emitter, node);
+        emit_equal_expression(emitter, alloca, value_type.clone(), identifier.clone(), val);
+    }
     emitter.environment.insert(identifier, (alloca, value_type));
 }
 fn emit_declare_statement_alloca(
@@ -270,6 +276,58 @@ fn emit_prefix(emitter: &mut Emitter, node: PrefixNode) -> Value {
     }
 }
 
+fn emit_equal_expression(
+    emitter: &mut Emitter,
+    alloca: PointerValue,
+    alloca_type: BasicType,
+    alloca_identifier: String,
+    val: Value,
+) -> Value {
+    match alloca_type {
+        BasicType::Int => match val {
+            Value::Int(val) => {
+                emitter.builder.build_store(alloca, val);
+                Value::Int(val)
+            }
+            Value::Float(_val) => panic!("TODO"),
+            _ => panic!("TODO"),
+        },
+        BasicType::Float => match val {
+            Value::Int(_val) => panic!("TODO"),
+            Value::Float(val) => {
+                emitter.builder.build_store(alloca, val);
+                Value::Float(val)
+            }
+            _ => panic!("TODO"),
+        },
+        BasicType::Pointer(boxed_type) => match *boxed_type {
+            BasicType::Int => match val {
+                Value::Pointer(val, val_type) => match val_type {
+                    BasicType::Int => {
+                        emitter
+                            .environment
+                            .insert(alloca_identifier, (val, BasicType::Pointer(boxed_type)));
+                        Value::Pointer(val, val_type)
+                    }
+                    _ => panic!("TODO"),
+                },
+                Value::Array(val, val_type, size) => match val_type {
+                    BasicType::Int => {
+                        emitter
+                            .environment
+                            .insert(alloca_identifier, (val, BasicType::Array(boxed_type, size)));
+                        Value::Array(val, val_type, size)
+                    }
+                    _ => panic!("TODO"),
+                },
+                _ => panic!("TODO"),
+            },
+            _ => panic!("TODO"),
+        },
+        _ => panic!(),
+    }
+}
+
 fn emit_bin_exp(emitter: &mut Emitter, node: BinExpNode) -> Value {
     let operator = match node.op.token {
         Token::Op(op, _) => op,
@@ -277,52 +335,10 @@ fn emit_bin_exp(emitter: &mut Emitter, node: BinExpNode) -> Value {
     };
     match operator.as_ref() {
         "=" => {
-            let (alloca, variable_type, identifier): (PointerValue, BasicType, String) =
+            let (alloca, alloca_type, identifier): (PointerValue, BasicType, String) =
                 emit_expression_as_pointer(emitter, *node.lhs);
             let val: Value = emit_expression(emitter, *node.rhs);
-            match variable_type {
-                BasicType::Int => match val {
-                    Value::Int(val) => {
-                        emitter.builder.build_store(alloca, val);
-                        Value::Int(val)
-                    }
-                    Value::Float(_val) => panic!("TODO"),
-                    _ => panic!("TODO"),
-                },
-                BasicType::Float => match val {
-                    Value::Int(_val) => panic!("TODO"),
-                    Value::Float(val) => {
-                        emitter.builder.build_store(alloca, val);
-                        Value::Float(val)
-                    }
-                    _ => panic!("TODO"),
-                },
-                BasicType::Pointer(boxed_type) => match *boxed_type {
-                    BasicType::Int => match val {
-                        Value::Pointer(val, val_type) => match val_type {
-                            BasicType::Int => {
-                                emitter
-                                    .environment
-                                    .insert(identifier, (val, BasicType::Pointer(boxed_type)));
-                                Value::Pointer(val, val_type)
-                            }
-                            _ => panic!("TODO"),
-                        },
-                        Value::Array(val, val_type, size) => match val_type {
-                            BasicType::Int => {
-                                emitter
-                                    .environment
-                                    .insert(identifier, (val, BasicType::Array(boxed_type, size)));
-                                Value::Array(val, val_type, size)
-                            }
-                            _ => panic!("TODO"),
-                        },
-                        _ => panic!("TODO"),
-                    },
-                    _ => panic!("TODO"),
-                },
-                _ => panic!(),
-            }
+            emit_equal_expression(emitter, alloca, alloca_type, identifier, val)
         }
         _ => {
             let lhs = emit_expression(emitter, *node.lhs);

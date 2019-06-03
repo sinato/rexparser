@@ -89,7 +89,15 @@ impl DeclareStatementNode {
         while let Some(size) = array_size_vec.pop() {
             value_type = BasicType::Array(Box::new(value_type), size);
         }
-        let initialize_expression = None;
+
+        let mut initialize_expression = None;
+        if let Some(Token::Op(op, _)) = tokens.peek() {
+            if op == "=" {
+                tokens.pop();
+                initialize_expression = Some(toplevel(tokens));
+            }
+        }
+
         match tokens.pop().unwrap() {
             Token::Semi => (),
             _ => panic!(),
