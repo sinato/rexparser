@@ -45,9 +45,11 @@ mod tests {
         let statement = StatementNode::Return(ReturnStatementNode { expression });
         let mut statements: VecDeque<StatementNode> = VecDeque::new();
         statements.push_back(statement);
+        let parameters: VecDeque<(String, BasicType)> = VecDeque::new();
         let expected = DeclareNode::Function(FunctionNode {
             identifier,
             return_type,
+            parameters,
             statements,
         });
         assert_eq!(actual, expected);
@@ -75,9 +77,11 @@ mod tests {
         });
         statements.push_back(statement);
 
+        let parameters: VecDeque<(String, BasicType)> = VecDeque::new();
         let expected = DeclareNode::Function(FunctionNode {
             identifier,
             return_type,
+            parameters,
             statements,
         });
         assert_eq!(actual, expected);

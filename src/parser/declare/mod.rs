@@ -19,6 +19,7 @@ impl DeclareNode {
 pub struct FunctionNode {
     pub identifier: String,
     pub return_type: BasicType,
+    pub parameters: VecDeque<(String, BasicType)>,
     pub statements: VecDeque<StatementNode>,
 }
 impl FunctionNode {
@@ -27,13 +28,33 @@ impl FunctionNode {
             Token::Type(val) => val,
             _ => panic!(),
         };
-
         let identifier = match tokens.pop().unwrap() {
             Token::Ide(val) => val,
             _ => panic!(),
         }; // consume main
         tokens.pop(); // consume (
-        tokens.pop(); // consume )
+
+        let mut parameters: VecDeque<(String, BasicType)> = VecDeque::new();
+        loop {
+            if let Some(Token::ParenE) = tokens.peek() {
+                tokens.pop(); // consume )
+                break;
+            }
+            let param_type = match tokens.pop().unwrap() {
+                Token::Type(val) => val,
+                _ => panic!(),
+            };
+            let identifier = match tokens.pop().unwrap() {
+                Token::Ide(val) => val,
+                _ => panic!(),
+            };
+            parameters.push_back((identifier, param_type));
+            if let Some(Token::Op(op, _)) = tokens.peek() {
+                if op == "," {
+                    tokens.pop(); // consume ,
+                }
+            }
+        }
         tokens.pop(); // consume {
 
         let mut statements: VecDeque<StatementNode> = VecDeque::new();
@@ -49,6 +70,7 @@ impl FunctionNode {
         FunctionNode {
             identifier,
             return_type,
+            parameters,
             statements,
         }
     }

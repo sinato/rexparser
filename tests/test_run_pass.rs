@@ -102,3 +102,9 @@ fn test_function() {
     let filepath = "./tests/resources/test_function.c";
     run(filepath, "55");
 }
+
+#[test]
+fn test_function2() {
+    let filepath = "./tests/resources/test_function2.c";
+    run(filepath, "3");
+}

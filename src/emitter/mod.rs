@@ -1,8 +1,8 @@
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::module::Module;
-use inkwell::values::InstructionOpcode;
-use inkwell::values::{FloatValue, IntValue, PointerValue};
+use inkwell::types::BasicTypeEnum;
+use inkwell::values::{BasicValueEnum, FloatValue, InstructionOpcode, IntValue, PointerValue};
 
 use std::collections::HashMap;
 use std::path;
@@ -78,11 +78,43 @@ fn emit_function(emitter: &mut Emitter, node: DeclareNode) {
     let identifier = function_node.identifier;
     let mut statement_nodes = function_node.statements;
 
-    let fn_type = emitter.context.i32_type().fn_type(&[], false);
+    let parameters = function_node.parameters;
+    let mut param_types: Vec<BasicTypeEnum> = Vec::new();
+
+    let mut cparameters = parameters.clone();
+
+    while let Some((_identifier, val_type)) = cparameters.pop_front() {
+        let param_type: BasicTypeEnum = match val_type {
+            BasicType::Int => emitter.context.i32_type().into(),
+            _ => panic!("TODO"),
+        };
+        param_types.push(param_type);
+    }
+    let fn_type = emitter.context.i32_type().fn_type(&param_types, false);
     let func = emitter.module.add_function(&identifier, fn_type, None);
 
     let basic_block = emitter.context.append_basic_block(&func, "entry");
     emitter.builder.position_at_end(&basic_block);
+
+    for (i, (identifier, val_type)) in parameters.into_iter().enumerate() {
+        match val_type {
+            BasicType::Int => {
+                let param_value = match func.get_nth_param(i as u32) {
+                    Some(val) => val.into_int_value(),
+                    None => panic!(),
+                };
+                let param_alloca = emitter
+                    .builder
+                    .build_alloca(emitter.context.i32_type(), &identifier);
+                emitter
+                    .environment
+                    .insert(identifier, (param_alloca, BasicType::Int));
+                emitter.builder.build_store(param_alloca, param_value);
+            }
+            _ => panic!("TODO"),
+        }
+    }
+
     while let Some(statement_node) = statement_nodes.pop_front() {
         emit_statement(emitter, statement_node, function_node.return_type.clone());
     }
@@ -418,16 +450,45 @@ fn emit_function_call(emitter: &mut Emitter, node: FunctionCallNode) -> Value {
         Token::Ide(identifier) => identifier,
         _ => panic!(),
     };
-    let _parameters = node.parameters;
     let fn_value = match emitter.module.get_function(&identifier) {
         Some(value) => value,
         None => panic!(format!("call of undeclared function {}", identifier)),
     };
-    let func_call_site = emitter.builder.build_call(fn_value, &[], "");
+    let vals = emit_comma_as_parameters(emitter, *node.parameters);
+
+    let mut arguments: Vec<BasicValueEnum> = Vec::new();
+    for val in vals.into_iter() {
+        let argument: BasicValueEnum = match val {
+            Value::Int(val) => val.into(),
+            _ => panic!("TODO"),
+        };
+        arguments.push(argument);
+    }
+    let func_call_site = emitter.builder.build_call(fn_value, &arguments, "");
     let val = func_call_site
         .try_as_basic_value()
         .left()
         .unwrap()
         .into_int_value();
     Value::Int(val)
+}
+
+fn emit_comma_as_parameters(emitter: &mut Emitter, node: ExpressionNode) -> Vec<Value> {
+    match node {
+        ExpressionNode::BinExp(node) => match node.clone().op.token {
+            Token::Op(op, _) => match op.as_ref() {
+                "," => {
+                    let mut lhs = emit_comma_as_parameters(emitter, *node.lhs);
+                    let rhs = emit_comma_as_parameters(emitter, *node.rhs);
+                    lhs.extend(rhs.iter().cloned());
+                    lhs
+                }
+                _ => vec![emit_bin_exp(emitter, node)],
+            },
+            _ => panic!(),
+        },
+        ExpressionNode::Token(node) => vec![emit_token(emitter, node)],
+        ExpressionNode::Empty => vec![],
+        _ => panic!(),
+    }
 }
