@@ -93,7 +93,7 @@ fn emit_function(emitter: &mut Emitter, node: DeclareNode) {
                     .build_alloca(emitter.context.i32_type(), &identifier);
                 emitter
                     .environment
-                    .insert(identifier, (param_alloca, BasicType::Int));
+                    .insert_new(identifier, (param_alloca, BasicType::Int));
                 emitter.builder.build_store(param_alloca, param_value);
             }
             _ => panic!("TODO"),
@@ -116,9 +116,11 @@ fn emit_statement(emitter: &mut Emitter, node: StatementNode, return_type: Basic
 
 fn emit_compound_statement(emitter: &mut Emitter, node: CompoundStatementNode) {
     let mut statements = node.statements;
+    emitter.environment.push_scope();
     while let Some(statement) = statements.pop_front() {
         emit_statement(emitter, statement, BasicType::Empty);
     }
+    emitter.environment.pop_scope();
 }
 
 fn emit_expression_statement(emitter: &mut Emitter, node: ExpressionStatementNode) {
@@ -157,7 +159,9 @@ fn emit_declare_statement(emitter: &mut Emitter, node: DeclareStatementNode) {
         let val = emit_expression(emitter, node);
         emit_equal_expression(emitter, alloca, value_type.clone(), identifier.clone(), val);
     }
-    emitter.environment.insert(identifier, (alloca, value_type));
+    emitter
+        .environment
+        .insert_new(identifier, (alloca, value_type));
 }
 fn emit_declare_statement_alloca(
     emitter: &mut Emitter,

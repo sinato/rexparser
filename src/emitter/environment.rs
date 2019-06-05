@@ -43,9 +43,12 @@ impl Environment {
         value: (PointerValue, BasicType),
     ) -> Option<(PointerValue, BasicType)> {
         if let Some(variables) = self.variables_stack.last_mut() {
+            if variables.contains_key(&key) {
+                panic!(format!("redefinition of {}", key))
+            }
             variables.insert(key, value)
         } else {
-            None
+            panic!()
         }
     }
     pub fn get(&self, key: &str) -> Option<(PointerValue, BasicType)> {
@@ -57,8 +60,11 @@ impl Environment {
         }
         None
     }
-    pub fn add_scope(&mut self) {
+    pub fn push_scope(&mut self) {
         let variables: HashMap<String, (PointerValue, BasicType)> = HashMap::new();
         self.variables_stack.push(variables);
+    }
+    pub fn pop_scope(&mut self) -> Option<HashMap<String, (PointerValue, BasicType)>> {
+        self.variables_stack.pop()
     }
 }

@@ -118,5 +118,11 @@ fn test_function2() {
 #[test]
 fn test_compound_statement() {
     let filepath = "./tests/resources/test_compound_statement.c";
-    run(filepath, "20");
+    run(filepath, "17");
+}
+
+#[test]
+fn test_compound_statement2() {
+    let filepath = "./tests/resources/test_compound_statement2.c";
+    run(filepath, "18");
 }
