@@ -1,12 +1,14 @@
+pub mod environment;
+
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::module::Module;
 use inkwell::types::BasicTypeEnum;
 use inkwell::values::{BasicValueEnum, FloatValue, InstructionOpcode, IntValue, PointerValue};
 
-use std::collections::HashMap;
 use std::path;
 
+use crate::emitter::environment::Environment;
 use crate::lexer::token::*;
 use crate::parser::declare::DeclareNode;
 use crate::parser::expression::node::*;
@@ -19,23 +21,6 @@ pub enum Value {
     Float(FloatValue),
     Pointer(PointerValue, BasicType),
     Array(PointerValue, BasicType, u32),
-}
-
-pub struct Environment {
-    variables: HashMap<String, (PointerValue, BasicType)>,
-}
-impl Environment {
-    fn new() -> Environment {
-        let variables: HashMap<String, (PointerValue, BasicType)> = HashMap::new();
-        Environment { variables }
-    }
-    fn insert(
-        &mut self,
-        key: String,
-        value: (PointerValue, BasicType),
-    ) -> Option<(PointerValue, BasicType)> {
-        self.variables.insert(key, value)
-    }
 }
 
 pub struct Emitter {
@@ -226,12 +211,10 @@ fn emit_expression_as_pointer(
     match node {
         ExpressionNode::BinExp(_node) => panic!("TODO: implement"),
         ExpressionNode::Token(node) => match node.token {
-            Token::Ide(identifier) => {
-                match emitter.environment.variables.clone().remove(&identifier) {
-                    Some((alloca, variable_type)) => (alloca, variable_type, identifier),
-                    None => panic!(format!("use of undeclared identifier {}", identifier)),
-                }
-            }
+            Token::Ide(identifier) => match emitter.environment.get(&identifier) {
+                Some((alloca, variable_type)) => (alloca, variable_type, identifier),
+                None => panic!(format!("use of undeclared identifier {}", identifier)),
+            },
             _ => panic!(),
         },
         ExpressionNode::ArrayIndex(node) => {
@@ -346,6 +329,7 @@ fn emit_bin_exp(emitter: &mut Emitter, node: BinExpNode) -> Value {
         "=" => {
             let (alloca, alloca_type, identifier): (PointerValue, BasicType, String) =
                 emit_expression_as_pointer(emitter, *node.lhs);
+
             let val: Value = emit_expression(emitter, *node.rhs);
             emit_equal_expression(emitter, alloca, alloca_type, identifier, val)
         }
@@ -433,7 +417,7 @@ fn emit_token(emitter: &mut Emitter, node: TokenNode) -> Value {
         }
         Token::Ide(val) => {
             let identifier = val;
-            match emitter.environment.variables.clone().remove(&identifier) {
+            match emitter.environment.get(&identifier) {
                 Some((alloca, variable_type)) => match variable_type {
                     BasicType::Int => {
                         let val = emitter
