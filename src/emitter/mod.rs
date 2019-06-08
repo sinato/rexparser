@@ -1,20 +1,20 @@
 pub mod environment;
+pub mod expression;
 
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::module::Module;
 use inkwell::types::BasicTypeEnum;
-use inkwell::values::{
-    ArrayValue, BasicValueEnum, FloatValue, InstructionOpcode, IntValue, PointerValue,
-};
+use inkwell::values::{FloatValue, InstructionOpcode, IntValue, PointerValue};
 use inkwell::AddressSpace;
 
 use std::path;
 
 use crate::emitter::environment::Environment;
+use crate::emitter::expression::util::*;
+use crate::emitter::expression::*;
 use crate::lexer::token::*;
 use crate::parser::declare::DeclareNode;
-use crate::parser::expression::node::*;
 use crate::parser::statement::*;
 use crate::parser::ProgramNode;
 
@@ -160,7 +160,7 @@ fn emit_declare_statement(emitter: &mut Emitter, node: DeclareStatementNode) {
     let initialize_exp = node.initialize_expression;
     if let Some(node) = initialize_exp {
         let val = emit_expression(emitter, node);
-        emit_equal_expression(emitter, alloca, value_type.clone(), identifier.clone(), val);
+        emit_equal_expression(emitter, alloca, value_type.clone(), val);
     }
     emitter
         .environment
@@ -203,318 +203,6 @@ fn get_nested_type(emitter: &mut Emitter, value_type: BasicType) -> BasicTypeEnu
             };
             BasicTypeEnum::ArrayType(array_type)
         }
-        _ => panic!(),
-    }
-}
-
-fn emit_expression(emitter: &mut Emitter, node: ExpressionNode) -> Value {
-    match node {
-        ExpressionNode::BinExp(node) => emit_bin_exp(emitter, node),
-        ExpressionNode::Token(node) => emit_token(emitter, node),
-        ExpressionNode::Prefix(node) => emit_prefix(emitter, node),
-        ExpressionNode::ArrayIndex(node) => emit_array_index(emitter, node),
-        ExpressionNode::FunctionCall(node) => emit_function_call(emitter, node),
-        _ => panic!(""),
-    }
-}
-
-fn emit_expression_as_pointer(
-    emitter: &mut Emitter,
-    node: ExpressionNode,
-) -> (PointerValue, BasicType, String) {
-    match node {
-        ExpressionNode::BinExp(_node) => panic!("TODO: implement"),
-        ExpressionNode::Token(node) => match node.token {
-            Token::Ide(identifier) => match emitter.environment.get(&identifier) {
-                Some((alloca, variable_type)) => (alloca, variable_type, identifier),
-                None => panic!(format!("use of undeclared identifier {}", identifier)),
-            },
-            _ => panic!(),
-        },
-        ExpressionNode::ArrayIndex(node) => {
-            let array: ExpressionNode = *node.array;
-            let index: ExpressionNode = *node.index;
-
-            let index = match emit_expression(emitter, index) {
-                Value::Int(val) => val,
-                _ => panic!(),
-            };
-            let (array_alloca, _, identifier) = emit_expression_as_pointer(emitter, array);
-            let alloca = unsafe {
-                emitter.builder.build_gep(
-                    array_alloca,
-                    &[emitter.context.i32_type().const_int(0, false), index],
-                    "",
-                )
-            };
-            (alloca, BasicType::Int, identifier)
-        }
-        _ => panic!(),
-    }
-}
-
-fn emit_prefix(emitter: &mut Emitter, node: PrefixNode) -> Value {
-    let prefix = node.prefix;
-    let expression = *node.node;
-    let val = emit_expression(emitter, expression);
-    match prefix.token {
-        Token::PrefixOp(op) => match op.as_ref() {
-            "&" => match val {
-                Value::Int(val) => {
-                    let alloca = emitter.builder.build_alloca(emitter.context.i32_type(), "");
-                    emitter.builder.build_store(alloca, val);
-                    Value::Pointer(alloca, BasicType::Int)
-                }
-                _ => panic!(),
-            },
-            "*" => match val {
-                Value::Pointer(val, val_type) => match val_type {
-                    BasicType::Int => {
-                        Value::Int(emitter.builder.build_load(val, "").into_int_value())
-                    }
-                    _ => panic!(),
-                },
-                _ => panic!(),
-            },
-            _ => panic!(),
-        },
-        _ => panic!(),
-    }
-}
-
-fn emit_equal_expression(
-    emitter: &mut Emitter,
-    alloca: PointerValue,
-    alloca_type: BasicType,
-    alloca_identifier: String,
-    val: Value,
-) -> Value {
-    match alloca_type {
-        BasicType::Int => match val {
-            Value::Int(val) => {
-                emitter.builder.build_store(alloca, val);
-                Value::Int(val)
-            }
-            Value::Float(_val) => panic!("TODO"),
-            _ => panic!("TODO"),
-        },
-        BasicType::Float => match val {
-            Value::Int(_val) => panic!("TODO"),
-            Value::Float(val) => {
-                emitter.builder.build_store(alloca, val);
-                Value::Float(val)
-            }
-            _ => panic!("TODO"),
-        },
-        BasicType::Pointer(boxed_type) => match *boxed_type {
-            BasicType::Int => match val {
-                Value::Pointer(val, val_type) => match val_type {
-                    BasicType::Int => {
-                        emitter.builder.build_store(alloca, val);
-                        Value::Pointer(val, val_type)
-                    }
-                    _ => panic!("TODO"),
-                },
-                Value::Array(val, val_type, size) => match val_type {
-                    BasicType::Int => {
-                        emitter.builder.build_store(alloca, val);
-                        Value::Array(val, val_type, size)
-                    }
-                    _ => panic!("TODO"),
-                },
-                _ => panic!("TODO"),
-            },
-            _ => panic!("TODO"),
-        },
-        _ => panic!(),
-    }
-}
-
-fn emit_bin_exp(emitter: &mut Emitter, node: BinExpNode) -> Value {
-    let operator = match node.op.token {
-        Token::Op(op, _) => op,
-        _ => panic!(),
-    };
-    match operator.as_ref() {
-        "=" => {
-            let (alloca, alloca_type, identifier): (PointerValue, BasicType, String) =
-                emit_expression_as_pointer(emitter, *node.lhs);
-
-            let val: Value = emit_expression(emitter, *node.rhs);
-            emit_equal_expression(emitter, alloca, alloca_type, identifier, val)
-        }
-        _ => {
-            let lhs = emit_expression(emitter, *node.lhs);
-            let rhs = emit_expression(emitter, *node.rhs);
-
-            match lhs {
-                Value::Int(lhs) => match rhs {
-                    Value::Int(rhs) => {
-                        let val = match operator.as_ref() {
-                            "+" => emitter.builder.build_int_add(lhs, rhs, "add"),
-                            "*" => emitter.builder.build_int_mul(lhs, rhs, "mul"),
-                            _ => panic!("unimpelemented operator."),
-                        };
-                        Value::Int(val)
-                    }
-                    Value::Float(rhs) => {
-                        let lhs = lhs.const_signed_to_float(emitter.context.f32_type());
-                        let val = match operator.as_ref() {
-                            "+" => emitter.builder.build_float_add(lhs, rhs, "add"),
-                            "*" => emitter.builder.build_float_mul(lhs, rhs, "mul"),
-                            _ => panic!("unimpelemented operator."),
-                        };
-                        Value::Float(val)
-                    }
-                    _ => panic!("TODO"),
-                },
-                Value::Float(lhs) => match rhs {
-                    Value::Int(rhs) => {
-                        let rhs = rhs.const_signed_to_float(emitter.context.f32_type());
-                        let val = match operator.as_ref() {
-                            "+" => emitter.builder.build_float_add(lhs, rhs, "add"),
-                            "*" => emitter.builder.build_float_mul(lhs, rhs, "mul"),
-                            _ => panic!("unimpelemented operator."),
-                        };
-                        Value::Float(val)
-                    }
-                    Value::Float(rhs) => {
-                        let val = match operator.as_ref() {
-                            "+" => emitter.builder.build_float_add(lhs, rhs, "add"),
-                            "*" => emitter.builder.build_float_mul(lhs, rhs, "mul"),
-                            _ => panic!("unimpelemented operator."),
-                        };
-                        Value::Float(val)
-                    }
-                    _ => panic!("TODO"),
-                },
-                Value::Array(array_alloca, val_type, _size) => match rhs {
-                    Value::Int(rhs) => match val_type {
-                        BasicType::Int => {
-                            let alloca = match operator.as_ref() {
-                                "+" => unsafe {
-                                    emitter.builder.build_gep(
-                                        array_alloca,
-                                        &[emitter.context.i32_type().const_int(0, false), rhs],
-                                        "",
-                                    )
-                                },
-                                _ => panic!("unimpelemented operator."),
-                            };
-                            Value::Pointer(alloca, val_type)
-                        }
-                        _ => panic!("TODO"),
-                    },
-                    _ => panic!(),
-                },
-                _ => panic!("TODO"),
-            }
-        }
-    }
-}
-
-fn emit_token(emitter: &mut Emitter, node: TokenNode) -> Value {
-    match node.token {
-        Token::IntNum(val) => {
-            let val: u64 = val.parse().unwrap();
-            let val = emitter.context.i32_type().const_int(val, false);
-            Value::Int(val)
-        }
-        Token::FloatNum(val) => {
-            let val: f64 = val.parse().unwrap();
-            let val = emitter.context.f32_type().const_float(val);
-            Value::Float(val)
-        }
-        Token::Ide(val) => {
-            let identifier = val;
-            match emitter.environment.get(&identifier) {
-                Some((alloca, variable_type)) => match variable_type {
-                    BasicType::Int => {
-                        let val = emitter
-                            .builder
-                            .build_load(alloca, &identifier)
-                            .into_int_value();
-                        Value::Int(val)
-                    }
-                    BasicType::Float => {
-                        let val = emitter
-                            .builder
-                            .build_load(alloca, &identifier)
-                            .into_float_value();
-                        Value::Float(val)
-                    }
-                    BasicType::Pointer(val_type) => {
-                        let val = emitter
-                            .builder
-                            .build_load(alloca, &identifier)
-                            .into_pointer_value();
-                        Value::Pointer(val, *val_type)
-                    }
-                    BasicType::Array(val_type, size) => Value::Array(alloca, *val_type, size),
-                    _ => panic!(),
-                },
-                None => panic!(format!("use of undeclared identifier {}", identifier)),
-            }
-        }
-        _ => panic!(),
-    }
-}
-
-fn emit_array_index(emitter: &mut Emitter, node: ArrayIndexNode) -> Value {
-    let (alloca, val_type, identifier) =
-        emit_expression_as_pointer(emitter, ExpressionNode::ArrayIndex(node));
-
-    let val = emitter.builder.build_load(alloca, &identifier);
-    match val_type {
-        BasicType::Int => Value::Int(val.into_int_value()),
-        _ => panic!("TODO"),
-    }
-}
-
-fn emit_function_call(emitter: &mut Emitter, node: FunctionCallNode) -> Value {
-    let identifier = match node.identifier.token {
-        Token::Ide(identifier) => identifier,
-        _ => panic!(),
-    };
-    let fn_value = match emitter.module.get_function(&identifier) {
-        Some(value) => value,
-        None => panic!(format!("call of undeclared function {}", identifier)),
-    };
-    let vals = emit_comma_as_parameters(emitter, *node.parameters);
-
-    let mut arguments: Vec<BasicValueEnum> = Vec::new();
-    for val in vals.into_iter() {
-        let argument: BasicValueEnum = match val {
-            Value::Int(val) => val.into(),
-            _ => panic!("TODO"),
-        };
-        arguments.push(argument);
-    }
-    let func_call_site = emitter.builder.build_call(fn_value, &arguments, "");
-    let val = func_call_site
-        .try_as_basic_value()
-        .left()
-        .unwrap()
-        .into_int_value();
-    Value::Int(val)
-}
-
-fn emit_comma_as_parameters(emitter: &mut Emitter, node: ExpressionNode) -> Vec<Value> {
-    match node {
-        ExpressionNode::BinExp(node) => match node.clone().op.token {
-            Token::Op(op, _) => match op.as_ref() {
-                "," => {
-                    let mut lhs = emit_comma_as_parameters(emitter, *node.lhs);
-                    let rhs = emit_comma_as_parameters(emitter, *node.rhs);
-                    lhs.extend(rhs.iter().cloned());
-                    lhs
-                }
-                _ => vec![emit_bin_exp(emitter, node)],
-            },
-            _ => panic!(),
-        },
-        ExpressionNode::Token(node) => vec![emit_token(emitter, node)],
-        ExpressionNode::Empty => vec![],
         _ => panic!(),
     }
 }

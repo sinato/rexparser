@@ -12,31 +12,6 @@ impl Environment {
         variables_stack.push(global_variables);
         Environment { variables_stack }
     }
-
-    pub fn find(&self, key: &str) -> Option<usize> {
-        for (i, variables) in self.variables_stack.iter().rev().enumerate() {
-            if variables.contains_key(key) {
-                return Some(self.variables_stack.len() - 1 - i);
-            }
-        }
-        None
-    }
-    pub fn insert(
-        &mut self,
-        key: String,
-        value: (PointerValue, BasicType),
-    ) -> Option<(PointerValue, BasicType)> {
-        match self.find(&key) {
-            Some(idx) => self.variables_stack[idx].insert(key, value),
-            None => {
-                if let Some(variables) = self.variables_stack.last_mut() {
-                    variables.insert(key, value)
-                } else {
-                    panic!()
-                }
-            }
-        }
-    }
     pub fn insert_new(
         &mut self,
         key: String,
