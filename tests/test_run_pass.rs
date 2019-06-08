@@ -126,3 +126,15 @@ fn test_compound_statement2() {
     let filepath = "./tests/resources/test_compound_statement2.c";
     run(filepath, "18");
 }
+
+#[test]
+fn test_function_arr() {
+    let filepath = "./tests/resources/test_function_arr.c";
+    run(filepath, "35");
+}
+
+#[test]
+fn test_function_arr2() {
+    let filepath = "./tests/resources/test_function_arr2.c";
+    run(filepath, "32");
+}

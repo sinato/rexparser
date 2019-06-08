@@ -74,7 +74,7 @@ fn emit_bin_exp(emitter: &mut Emitter, node: BinExpNode) -> Value {
                     }
                     _ => panic!("TODO"),
                 },
-                Value::Array(array_alloca, val_type, _size) => match rhs {
+                Value::Array(array_value, array_alloca, val_type, _size) => match rhs {
                     Value::Int(rhs) => match val_type {
                         BasicType::Int => {
                             let alloca = match operator.as_ref() {
@@ -136,7 +136,13 @@ fn emit_token(emitter: &mut Emitter, node: TokenNode) -> Value {
                             .into_pointer_value();
                         Value::Pointer(val, *val_type)
                     }
-                    BasicType::Array(val_type, size) => Value::Array(alloca, *val_type, size),
+                    BasicType::Array(val_type, size) => {
+                        let val = emitter
+                            .builder
+                            .build_load(alloca, &identifier)
+                            .into_array_value();
+                        Value::Array(val, alloca, *val_type, size)
+                    }
                     _ => panic!(),
                 },
                 None => panic!(format!("use of undeclared identifier {}", identifier)),
@@ -201,6 +207,7 @@ fn emit_function_call(emitter: &mut Emitter, node: FunctionCallNode) -> Value {
     for val in vals.into_iter() {
         let argument: BasicValueEnum = match val {
             Value::Int(val) => val.into(),
+            Value::Array(val, _alloca, _, _) => val.into(),
             _ => panic!("TODO"),
         };
         arguments.push(argument);

@@ -71,10 +71,10 @@ pub fn emit_equal_expression(
                     }
                     _ => panic!("TODO"),
                 },
-                Value::Array(val, val_type, size) => match val_type {
+                Value::Array(val, alloca, val_type, size) => match val_type {
                     BasicType::Int => {
                         emitter.builder.build_store(alloca, val);
-                        Value::Array(val, val_type, size)
+                        Value::Array(val, alloca, val_type, size)
                     }
                     _ => panic!("TODO"),
                 },

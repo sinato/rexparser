@@ -3,6 +3,8 @@ use std::collections::VecDeque;
 pub mod parser;
 
 use crate::lexer::token::*;
+use crate::parser::expression::node::*;
+use crate::parser::expression::parser::toplevel;
 use crate::parser::statement::StatementNode;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -19,7 +21,7 @@ impl DeclareNode {
 pub struct FunctionNode {
     pub identifier: String,
     pub return_type: BasicType,
-    pub parameters: VecDeque<(String, BasicType)>,
+    pub parameters: VecDeque<DeclareVariableNode>,
     pub statements: VecDeque<StatementNode>,
 }
 impl FunctionNode {
@@ -34,21 +36,14 @@ impl FunctionNode {
         }; // consume main
         tokens.pop(); // consume (
 
-        let mut parameters: VecDeque<(String, BasicType)> = VecDeque::new();
+        let mut parameters: VecDeque<DeclareVariableNode> = VecDeque::new();
         loop {
             if let Some(Token::ParenE) = tokens.peek() {
                 tokens.pop(); // consume )
                 break;
             }
-            let param_type = match tokens.pop().unwrap() {
-                Token::Type(val) => val,
-                _ => panic!(),
-            };
-            let identifier = match tokens.pop().unwrap() {
-                Token::Ide(val) => val,
-                _ => panic!(),
-            };
-            parameters.push_back((identifier, param_type));
+            let declare_variable_node = DeclareVariableNode::new(tokens);
+            parameters.push_back(declare_variable_node);
             if let Some(Token::Op(op, _)) = tokens.peek() {
                 if op == "," {
                     tokens.pop(); // consume ,
@@ -72,6 +67,62 @@ impl FunctionNode {
             return_type,
             parameters,
             statements,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct DeclareVariableNode {
+    pub value_type: BasicType,
+    pub identifier: String,
+    pub initialize_expression: Option<ExpressionNode>,
+}
+impl DeclareVariableNode {
+    pub fn new(tokens: &mut Tokens) -> DeclareVariableNode {
+        let mut value_type = match tokens.pop().unwrap() {
+            Token::Type(val) => val,
+            _ => panic!(),
+        };
+        if let Some(Token::Op(op, _)) = tokens.peek() {
+            if op == "*" {
+                value_type = BasicType::Pointer(Box::new(value_type));
+                tokens.pop();
+            }
+        }
+        let identifier = match tokens.pop().unwrap() {
+            Token::Ide(val) => val,
+            _ => panic!(),
+        };
+
+        let mut array_size_vec: Vec<u32> = Vec::new();
+        while let Some(Token::SuffixOp(op)) = tokens.peek() {
+            if op == "[" {
+                tokens.pop(); // consume [
+                let num = match tokens.pop().unwrap() {
+                    Token::IntNum(num) => num.parse().unwrap(),
+                    _ => panic!(),
+                };
+                array_size_vec.push(num);
+                tokens.pop(); // consume ]
+            } else {
+                break;
+            }
+        }
+        while let Some(size) = array_size_vec.pop() {
+            value_type = BasicType::Array(Box::new(value_type), size);
+        }
+
+        let mut initialize_expression = None;
+        if let Some(Token::Op(op, _)) = tokens.peek() {
+            if op == "=" {
+                tokens.pop();
+                initialize_expression = Some(toplevel(tokens));
+            }
+        }
+        DeclareVariableNode {
+            value_type,
+            identifier,
+            initialize_expression,
         }
     }
 }

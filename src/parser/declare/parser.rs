@@ -45,7 +45,7 @@ mod tests {
         let statement = StatementNode::Return(ReturnStatementNode { expression });
         let mut statements: VecDeque<StatementNode> = VecDeque::new();
         statements.push_back(statement);
-        let parameters: VecDeque<(String, BasicType)> = VecDeque::new();
+        let parameters: VecDeque<DeclareVariableNode> = VecDeque::new();
         let expected = DeclareNode::Function(FunctionNode {
             identifier,
             return_type,
@@ -65,10 +65,13 @@ mod tests {
 
         let mut statements: VecDeque<StatementNode> = VecDeque::new();
 
-        let statement = StatementNode::Declare(DeclareStatementNode {
+        let declare_variable_node = DeclareVariableNode {
             value_type: BasicType::Int,
             identifier: String::from("a"),
             initialize_expression: None,
+        };
+        let statement = StatementNode::Declare(DeclareStatementNode {
+            declare_variable_node,
         });
         statements.push_back(statement);
 
@@ -77,7 +80,7 @@ mod tests {
         });
         statements.push_back(statement);
 
-        let parameters: VecDeque<(String, BasicType)> = VecDeque::new();
+        let parameters: VecDeque<DeclareVariableNode> = VecDeque::new();
         let expected = DeclareNode::Function(FunctionNode {
             identifier,
             return_type,

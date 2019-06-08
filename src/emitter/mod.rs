@@ -5,7 +5,7 @@ use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::module::Module;
 use inkwell::types::BasicTypeEnum;
-use inkwell::values::{FloatValue, InstructionOpcode, IntValue, PointerValue};
+use inkwell::values::{ArrayValue, FloatValue, InstructionOpcode, IntValue, PointerValue};
 use inkwell::AddressSpace;
 
 use std::path;
@@ -23,7 +23,7 @@ pub enum Value {
     Int(IntValue),
     Float(FloatValue),
     Pointer(PointerValue, BasicType),
-    Array(PointerValue, BasicType, u32),
+    Array(ArrayValue, PointerValue, BasicType, u32),
 }
 
 pub struct Emitter {
@@ -71,11 +71,9 @@ fn emit_function(emitter: &mut Emitter, node: DeclareNode) {
 
     let mut cparameters = parameters.clone();
 
-    while let Some((_identifier, val_type)) = cparameters.pop_front() {
-        let param_type: BasicTypeEnum = match val_type {
-            BasicType::Int => emitter.context.i32_type().into(),
-            _ => panic!("TODO"),
-        };
+    while let Some(declare_variable_node) = cparameters.pop_front() {
+        let val_type = declare_variable_node.value_type;
+        let param_type = get_nested_type(emitter, val_type);
         param_types.push(param_type);
     }
     let fn_type = emitter.context.i32_type().fn_type(&param_types, false);
@@ -84,20 +82,30 @@ fn emit_function(emitter: &mut Emitter, node: DeclareNode) {
     let basic_block = emitter.context.append_basic_block(&func, "entry");
     emitter.builder.position_at_end(&basic_block);
 
-    for (i, (identifier, val_type)) in parameters.into_iter().enumerate() {
-        match val_type {
+    for (i, declare_variable_node) in parameters.into_iter().enumerate() {
+        let value_type = declare_variable_node.value_type;
+        let identifier = declare_variable_node.identifier;
+
+        let inkwell_value_type = get_nested_type(emitter, value_type.clone());
+        let alloca = emitter
+            .builder
+            .build_alloca(inkwell_value_type, &identifier);
+        emitter
+            .environment
+            .insert_new(identifier, (alloca, value_type.clone()));
+
+        let basic_value = match func.get_nth_param(i as u32) {
+            Some(val) => val,
+            None => panic!(),
+        };
+        match value_type {
             BasicType::Int => {
-                let param_value = match func.get_nth_param(i as u32) {
-                    Some(val) => val.into_int_value(),
-                    None => panic!(),
-                };
-                let param_alloca = emitter
-                    .builder
-                    .build_alloca(emitter.context.i32_type(), &identifier);
-                emitter
-                    .environment
-                    .insert_new(identifier, (param_alloca, BasicType::Int));
-                emitter.builder.build_store(param_alloca, param_value);
+                let value = basic_value.into_int_value();
+                emitter.builder.build_store(alloca, value);
+            }
+            BasicType::Array(_, _) => {
+                let value = basic_value.into_array_value();
+                emitter.builder.build_store(alloca, value);
             }
             _ => panic!("TODO"),
         }
@@ -153,6 +161,7 @@ fn emit_return_statement(emitter: &mut Emitter, node: ReturnStatementNode, retur
 }
 
 fn emit_declare_statement(emitter: &mut Emitter, node: DeclareStatementNode) {
+    let node = node.declare_variable_node;
     let identifier = node.identifier;
     let value_type = node.value_type;
     let alloca = emit_declare_statement_alloca(emitter, identifier.clone(), value_type.clone());

@@ -1,4 +1,5 @@
 use crate::lexer::token::*;
+use crate::parser::declare::*;
 use crate::parser::expression::node::ExpressionNode;
 use crate::parser::expression::parser::toplevel;
 
@@ -75,61 +76,17 @@ impl ReturnStatementNode {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct DeclareStatementNode {
-    pub value_type: BasicType,
-    pub identifier: String,
-    pub initialize_expression: Option<ExpressionNode>,
+    pub declare_variable_node: DeclareVariableNode,
 }
 impl DeclareStatementNode {
     pub fn new(tokens: &mut Tokens) -> DeclareStatementNode {
-        let mut value_type = match tokens.pop().unwrap() {
-            Token::Type(val) => val,
-            _ => panic!(),
-        };
-        if let Some(Token::Op(op, _)) = tokens.peek() {
-            if op == "*" {
-                value_type = BasicType::Pointer(Box::new(value_type));
-                tokens.pop();
-            }
-        }
-        let identifier = match tokens.pop().unwrap() {
-            Token::Ide(val) => val,
-            _ => panic!(),
-        };
-
-        let mut array_size_vec: Vec<u32> = Vec::new();
-        while let Some(Token::SuffixOp(op)) = tokens.peek() {
-            if op == "[" {
-                tokens.pop(); // consume [
-                let num = match tokens.pop().unwrap() {
-                    Token::IntNum(num) => num.parse().unwrap(),
-                    _ => panic!(),
-                };
-                array_size_vec.push(num);
-                tokens.pop(); // consume ]
-            } else {
-                break;
-            }
-        }
-        while let Some(size) = array_size_vec.pop() {
-            value_type = BasicType::Array(Box::new(value_type), size);
-        }
-
-        let mut initialize_expression = None;
-        if let Some(Token::Op(op, _)) = tokens.peek() {
-            if op == "=" {
-                tokens.pop();
-                initialize_expression = Some(toplevel(tokens));
-            }
-        }
-
+        let declare_variable_node = DeclareVariableNode::new(tokens);
         match tokens.pop().unwrap() {
             Token::Semi => (),
             _ => panic!(),
         };
         DeclareStatementNode {
-            value_type,
-            identifier,
-            initialize_expression,
+            declare_variable_node,
         }
     }
 }
