@@ -4,7 +4,10 @@ use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::module::Module;
 use inkwell::types::BasicTypeEnum;
-use inkwell::values::{BasicValueEnum, FloatValue, InstructionOpcode, IntValue, PointerValue};
+use inkwell::values::{
+    ArrayValue, BasicValueEnum, FloatValue, InstructionOpcode, IntValue, PointerValue,
+};
+use inkwell::AddressSpace;
 
 use std::path;
 
@@ -163,35 +166,42 @@ fn emit_declare_statement(emitter: &mut Emitter, node: DeclareStatementNode) {
         .environment
         .insert_new(identifier, (alloca, value_type));
 }
+
 fn emit_declare_statement_alloca(
     emitter: &mut Emitter,
     identifier: String,
     value_type: BasicType,
 ) -> PointerValue {
+    let value_type = get_nested_type(emitter, value_type);
+    emitter.builder.build_alloca(value_type, &identifier)
+}
+
+fn get_nested_type(emitter: &mut Emitter, value_type: BasicType) -> BasicTypeEnum {
     match value_type {
-        BasicType::Int => emitter
-            .builder
-            .build_alloca(emitter.context.i32_type(), &identifier),
-        BasicType::Float => emitter
-            .builder
-            .build_alloca(emitter.context.f32_type(), &identifier),
+        BasicType::Int => BasicTypeEnum::IntType(emitter.context.i32_type()),
+        BasicType::Float => BasicTypeEnum::FloatType(emitter.context.f32_type()),
         BasicType::Pointer(boxed_type) => {
-            emit_declare_statement_alloca(emitter, identifier, *boxed_type)
+            // I do not know anything about the address space.
+            let pointer_type = match get_nested_type(emitter, *boxed_type) {
+                BasicTypeEnum::IntType(value_type) => value_type.ptr_type(AddressSpace::Generic),
+                BasicTypeEnum::FloatType(value_type) => value_type.ptr_type(AddressSpace::Generic),
+                BasicTypeEnum::PointerType(value_type) => {
+                    value_type.ptr_type(AddressSpace::Generic)
+                }
+                BasicTypeEnum::ArrayType(value_type) => value_type.ptr_type(AddressSpace::Generic),
+                _ => panic!(),
+            };
+            BasicTypeEnum::PointerType(pointer_type)
         }
         BasicType::Array(boxed_type, size) => {
-            let array_type = match *boxed_type {
-                BasicType::Int => emitter.context.i32_type().array_type(size),
-                BasicType::Array(boxed_type, size2) => match *boxed_type {
-                    BasicType::Int => emitter
-                        .context
-                        .i32_type()
-                        .array_type(size2)
-                        .array_type(size),
-                    _ => panic!("TODO"),
-                },
-                _ => panic!("TODO"),
+            let array_type = match get_nested_type(emitter, *boxed_type) {
+                BasicTypeEnum::IntType(value_type) => value_type.array_type(size),
+                BasicTypeEnum::FloatType(value_type) => value_type.array_type(size),
+                BasicTypeEnum::PointerType(value_type) => value_type.array_type(size),
+                BasicTypeEnum::ArrayType(value_type) => value_type.array_type(size),
+                _ => panic!(),
             };
-            emitter.builder.build_alloca(array_type, "")
+            BasicTypeEnum::ArrayType(array_type)
         }
         _ => panic!(),
     }
@@ -300,18 +310,14 @@ fn emit_equal_expression(
             BasicType::Int => match val {
                 Value::Pointer(val, val_type) => match val_type {
                     BasicType::Int => {
-                        emitter
-                            .environment
-                            .insert(alloca_identifier, (val, BasicType::Pointer(boxed_type)));
+                        emitter.builder.build_store(alloca, val);
                         Value::Pointer(val, val_type)
                     }
                     _ => panic!("TODO"),
                 },
                 Value::Array(val, val_type, size) => match val_type {
                     BasicType::Int => {
-                        emitter
-                            .environment
-                            .insert(alloca_identifier, (val, BasicType::Array(boxed_type, size)));
+                        emitter.builder.build_store(alloca, val);
                         Value::Array(val, val_type, size)
                     }
                     _ => panic!("TODO"),
@@ -437,7 +443,13 @@ fn emit_token(emitter: &mut Emitter, node: TokenNode) -> Value {
                             .into_float_value();
                         Value::Float(val)
                     }
-                    BasicType::Pointer(val_type) => Value::Pointer(alloca, *val_type),
+                    BasicType::Pointer(val_type) => {
+                        let val = emitter
+                            .builder
+                            .build_load(alloca, &identifier)
+                            .into_pointer_value();
+                        Value::Pointer(val, *val_type)
+                    }
                     BasicType::Array(val_type, size) => Value::Array(alloca, *val_type, size),
                     _ => panic!(),
                 },
