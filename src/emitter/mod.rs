@@ -7,7 +7,7 @@ use inkwell::context::Context;
 use inkwell::module::Module;
 use inkwell::types::BasicTypeEnum;
 use inkwell::values::{ArrayValue, FloatValue, InstructionOpcode, IntValue, PointerValue};
-use inkwell::AddressSpace;
+use inkwell::{AddressSpace, IntPredicate};
 
 use std::path;
 
@@ -128,6 +128,7 @@ fn emit_statement(emitter: &mut Emitter, node: StatementNode, return_type: Basic
         StatementNode::Return(node) => emit_return_statement(emitter, node, return_type),
         StatementNode::Declare(node) => emit_declare_statement(emitter, node),
         StatementNode::Compound(node) => emit_compound_statement(emitter, node),
+        StatementNode::If(node) => emit_if_statement(emitter, node),
     }
 }
 
@@ -220,4 +221,36 @@ fn get_nested_type(emitter: &mut Emitter, value_type: BasicType) -> BasicTypeEnu
         }
         _ => panic!(),
     }
+}
+
+fn emit_if_statement(emitter: &mut Emitter, node: IfStatementNode) {
+    // ---- condition ---- ifthen ---- ifcont
+    //          ┗------------------------┛
+
+    let function = match emitter.module.get_last_function() {
+        Some(func) => func,
+        None => panic!(),
+    };
+    let then_bb = function.append_basic_block("ifthen");
+    let cont_bb = function.append_basic_block("ifcont");
+
+    let condition_val = match emit_expression(emitter, node.condition_expression) {
+        Value::Int(val) => val,
+        _ => panic!("TODO"),
+    };
+    let const_one = emitter.context.i32_type().const_int(0, false);
+    let condition_val =
+        emitter
+            .builder
+            .build_int_compare(IntPredicate::EQ, condition_val, const_one, "");
+
+    emitter
+        .builder
+        .build_conditional_branch(condition_val, &cont_bb, &then_bb);
+
+    emitter.builder.position_at_end(&then_bb);
+    emit_compound_statement(emitter, node.block);
+    emitter.builder.build_unconditional_branch(&cont_bb);
+
+    emitter.builder.position_at_end(&cont_bb);
 }

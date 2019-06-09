@@ -11,6 +11,7 @@ pub enum StatementNode {
     Return(ReturnStatementNode),
     Declare(DeclareStatementNode),
     Compound(CompoundStatementNode),
+    If(IfStatementNode),
 }
 impl StatementNode {
     pub fn new(tokens: &mut Tokens) -> StatementNode {
@@ -18,6 +19,7 @@ impl StatementNode {
             Token::Type(_) => StatementNode::Declare(DeclareStatementNode::new(tokens)),
             Token::Return => StatementNode::Return(ReturnStatementNode::new(tokens)),
             Token::CurlyS => StatementNode::Compound(CompoundStatementNode::new(tokens)),
+            Token::If => StatementNode::If(IfStatementNode::new(tokens)),
             _ => StatementNode::Expression(ExpressionStatementNode::new(tokens)),
         }
     }
@@ -87,6 +89,25 @@ impl DeclareStatementNode {
         };
         DeclareStatementNode {
             declare_variable_node,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct IfStatementNode {
+    pub condition_expression: ExpressionNode,
+    pub block: CompoundStatementNode,
+}
+impl IfStatementNode {
+    pub fn new(tokens: &mut Tokens) -> IfStatementNode {
+        tokens.pop(); // consume if
+        tokens.pop(); // consume (
+        let condition_expression = toplevel(tokens);
+        tokens.pop(); // consume )
+        let block = CompoundStatementNode::new(tokens);
+        IfStatementNode {
+            condition_expression,
+            block,
         }
     }
 }

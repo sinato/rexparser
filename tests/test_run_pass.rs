@@ -156,3 +156,15 @@ fn test_comp_int() {
     let filepath = "./tests/resources/test_comp_int.c";
     run(filepath, "101");
 }
+
+#[test]
+fn test_if() {
+    let filepath = "./tests/resources/test_if.c";
+    run(filepath, "103");
+}
+
+#[test]
+fn test_if2() {
+    let filepath = "./tests/resources/test_if2.c";
+    run(filepath, "54");
+}
