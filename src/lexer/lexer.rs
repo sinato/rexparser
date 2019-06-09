@@ -13,6 +13,7 @@ pub fn get_property(op: &String) -> Property {
     map.insert("=", (2, Associativity::Right));
     map.insert("==", (9, Associativity::Left));
     map.insert(">", (10, Associativity::Left));
+    map.insert("<", (10, Associativity::Left));
     map.insert("+", (12, Associativity::Left));
     map.insert("-", (12, Associativity::Left));
     map.insert("*", (13, Associativity::Left));
@@ -39,13 +40,14 @@ impl Lexer {
             ("TYPE", r"(int)|(float)"),
             ("RETURN", r"return"),
             ("IF", r"if"),
+            ("WHILE", r"while"),
             ("SQUARE_E", r"\]"),
             ("PAREN_E", r"\)"),
             ("CURLY_S", r"\{"),
             ("CURLY_E", r"\}"),
             ("PREFIXOP", r"((\s|^)\+\+)|&"),
             ("SUFFIXOP", r"(\+\+(\s|$)|\[|\()"),
-            ("OP", r"((==)|>|\+|-|\*|=|,)"),
+            ("OP", r"((==)|>|<|\+|-|\*|=|,)"),
             ("IDE", r"[a-z_]+"),
         ];
         let re = make_regex(&token_patterns);
@@ -80,6 +82,7 @@ impl Lexer {
                 },
                 "RETURN" => tokens.push(Token::Return),
                 "IF" => tokens.push(Token::If),
+                "WHILE" => tokens.push(Token::While),
                 "SQUARE_E" => tokens.push(Token::SquareE),
                 "PAREN_E" => tokens.push(Token::ParenE),
                 "CURLY_S" => tokens.push(Token::CurlyS),

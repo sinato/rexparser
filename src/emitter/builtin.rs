@@ -21,6 +21,7 @@ pub fn emit_builtin() {
     // emit builtin functions
     emit_comp_int(&mut emitter, "eq_int", IntPredicate::EQ);
     emit_comp_int(&mut emitter, "sgt_int", IntPredicate::SGT);
+    emit_comp_int(&mut emitter, "slt_int", IntPredicate::SLT);
 
     // output llvm-ir
     let _ = emitter.module.print_to_file(path::Path::new("builtin.ll"));

@@ -45,6 +45,9 @@ fn emit_bin_exp(emitter: &mut Emitter, node: BinExpNode) -> Value {
                             ">" => {
                                 emit_compare_expression(emitter, "sgt_int", lhs.into(), rhs.into())
                             }
+                            "<" => {
+                                emit_compare_expression(emitter, "slt_int", lhs.into(), rhs.into())
+                            }
                             _ => panic!("unimpelemented operator."),
                         };
                         Value::Int(val)

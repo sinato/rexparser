@@ -170,6 +170,12 @@ fn test_if3() {
 }
 
 #[test]
+fn test_while() {
+    let filepath = "./tests/resources/test_while.c";
+    run(filepath, "10");
+}
+
+#[test]
 fn test_comp_int() {
     let filepath = "./tests/resources/builtin/test_comp_int.c";
     run(filepath, "101");

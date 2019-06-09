@@ -60,6 +60,7 @@ fn emit_program(emitter: &mut Emitter, node: ProgramNode) {
     let fn_type = i32_type.fn_type(&[i32_type.into(), i32_type.into()], false);
     emitter.module.add_function("eq_int", fn_type, None);
     emitter.module.add_function("sgt_int", fn_type, None);
+    emitter.module.add_function("slt_int", fn_type, None);
 
     let mut declares = node.declares;
     while let Some(declare) = declares.pop_front() {
@@ -130,6 +131,7 @@ fn emit_statement(emitter: &mut Emitter, node: StatementNode, return_type: Basic
         StatementNode::Declare(node) => emit_declare_statement(emitter, node),
         StatementNode::Compound(node) => emit_compound_statement(emitter, node),
         StatementNode::If(node) => emit_if_statement(emitter, node),
+        StatementNode::While(node) => emit_while_statement(emitter, node),
     }
 }
 
@@ -252,6 +254,40 @@ fn emit_if_statement(emitter: &mut Emitter, node: IfStatementNode) {
     emitter.builder.position_at_end(&then_bb);
     emit_compound_statement(emitter, node.block);
     emitter.builder.build_unconditional_branch(&cont_bb);
+
+    emitter.builder.position_at_end(&cont_bb);
+}
+
+fn emit_while_statement(emitter: &mut Emitter, node: WhileStatementNode) {
+    // ---- comp ---- then ---- cont
+    //       ┗--------------------┛
+    let function = match emitter.module.get_last_function() {
+        Some(func) => func,
+        None => panic!(),
+    };
+    let comp_bb = function.append_basic_block("comp");
+    let then_bb = function.append_basic_block("then");
+    let cont_bb = function.append_basic_block("cont");
+
+    emitter.builder.build_unconditional_branch(&comp_bb);
+
+    emitter.builder.position_at_end(&comp_bb);
+    let condition_val = match emit_expression(emitter, node.condition_expression) {
+        Value::Int(val) => val,
+        _ => panic!("TODO"),
+    };
+    let const_one = emitter.context.i32_type().const_int(0, false);
+    let condition_val =
+        emitter
+            .builder
+            .build_int_compare(IntPredicate::EQ, condition_val, const_one, "");
+    emitter
+        .builder
+        .build_conditional_branch(condition_val, &cont_bb, &then_bb);
+
+    emitter.builder.position_at_end(&then_bb);
+    emit_compound_statement(emitter, node.block);
+    emitter.builder.build_unconditional_branch(&comp_bb);
 
     emitter.builder.position_at_end(&cont_bb);
 }
