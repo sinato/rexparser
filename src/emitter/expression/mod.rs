@@ -12,6 +12,7 @@ pub fn emit_expression(emitter: &mut Emitter, node: ExpressionNode) -> Value {
         ExpressionNode::BinExp(node) => emit_bin_exp(emitter, node),
         ExpressionNode::Token(node) => emit_token(emitter, node),
         ExpressionNode::Prefix(node) => emit_prefix(emitter, node),
+        ExpressionNode::Suffix(node) => emit_suffix(emitter, node),
         ExpressionNode::ArrayIndex(node) => emit_array_index(emitter, node),
         ExpressionNode::FunctionCall(node) => emit_function_call(emitter, node),
         _ => panic!(""),
@@ -182,6 +183,31 @@ fn emit_prefix(emitter: &mut Emitter, node: PrefixNode) -> Value {
                     }
                     _ => panic!(),
                 },
+                _ => panic!(),
+            },
+            _ => panic!(),
+        },
+        _ => panic!(),
+    }
+}
+
+fn emit_suffix(emitter: &mut Emitter, node: SuffixNode) -> Value {
+    let suffix = node.suffix;
+    let expression = *node.node;
+    let (alloca, val_type, identifier) = emit_expression_as_pointer(emitter, expression);
+    match suffix.token {
+        Token::SuffixOp(op) => match op.as_ref() {
+            "++" => match val_type {
+                BasicType::Int => {
+                    let val = emitter
+                        .builder
+                        .build_load(alloca, &identifier)
+                        .into_int_value();
+                    let const_one = emitter.context.i32_type().const_int(1, false);
+                    let incremented_val = emitter.builder.build_int_add(val, const_one, "");
+                    emitter.builder.build_store(alloca, incremented_val);
+                    Value::Int(val)
+                }
                 _ => panic!(),
             },
             _ => panic!(),

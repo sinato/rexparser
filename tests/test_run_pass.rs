@@ -176,6 +176,12 @@ fn test_while() {
 }
 
 #[test]
+fn test_increment() {
+    let filepath = "./tests/resources/test_increment.c";
+    run(filepath, "34");
+}
+
+#[test]
 fn test_comp_int() {
     let filepath = "./tests/resources/builtin/test_comp_int.c";
     run(filepath, "101");
