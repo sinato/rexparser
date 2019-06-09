@@ -146,6 +146,12 @@ fn test_paren() {
 }
 
 #[test]
+fn test_compare() {
+    let filepath = "./tests/resources/test_compare.c";
+    run(filepath, "100");
+}
+
+#[test]
 fn test_comp_int() {
     let filepath = "./tests/resources/test_comp_int.c";
     run(filepath, "101");

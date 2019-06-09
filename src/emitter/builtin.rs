@@ -25,7 +25,7 @@ pub fn emit_builtin(emitter: &mut Emitter) {
     let arg0 = function.get_first_param().unwrap().into_int_value();
     let arg1 = function.get_nth_param(1).unwrap().into_int_value();
     let cond = builder.build_int_compare(IntPredicate::EQ, arg0, arg1, "");
-    builder.build_conditional_branch(cond, &then_bb, &cont_bb);
+    builder.build_conditional_branch(cond, &cont_bb, &then_bb);
 
     builder.position_at_end(&then_bb);
     builder.build_unconditional_branch(&cont_bb);

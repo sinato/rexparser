@@ -6,6 +6,7 @@ use crate::lexer::token::*;
 use crate::parser::expression::node::*;
 
 use inkwell::values::{BasicValueEnum, PointerValue};
+use inkwell::IntPredicate;
 
 pub fn emit_expression(emitter: &mut Emitter, node: ExpressionNode) -> Value {
     match node {
@@ -39,6 +40,24 @@ fn emit_bin_exp(emitter: &mut Emitter, node: BinExpNode) -> Value {
                         let val = match operator.as_ref() {
                             "+" => emitter.builder.build_int_add(lhs, rhs, "add"),
                             "*" => emitter.builder.build_int_mul(lhs, rhs, "mul"),
+                            "==" => {
+                                let fn_value = match emitter.module.get_function("comp_int") {
+                                    Some(value) => value,
+                                    None => panic!(format!(
+                                        "call of undeclared function {}",
+                                        "comp_int"
+                                    )),
+                                };
+                                let arguments: Vec<BasicValueEnum> = vec![lhs.into(), rhs.into()];
+                                let func_call_site =
+                                    emitter.builder.build_call(fn_value, &arguments, "");
+                                let val = func_call_site
+                                    .try_as_basic_value()
+                                    .left()
+                                    .unwrap()
+                                    .into_int_value();
+                                val
+                            }
                             _ => panic!("unimpelemented operator."),
                         };
                         Value::Int(val)
