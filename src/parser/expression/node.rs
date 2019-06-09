@@ -18,6 +18,9 @@ pub enum ExpressionNode {
 }
 impl ExpressionNode {
     pub fn new(tokens: &mut Tokens) -> ExpressionNode {
+        BinExpNode::new(tokens)
+    }
+    pub fn new_node(tokens: &mut Tokens) -> ExpressionNode {
         let lhs = ExpressionNode::new_with_prefix(tokens);
         let lhs = ExpressionNode::new_with_suffix(lhs, tokens);
         lhs
@@ -31,7 +34,7 @@ impl ExpressionNode {
                     // treat as an operator
                     "+" | "-" | "*" => {
                         tokens.pop(); // consume "+" | "-"
-                        let node = ExpressionNode::new(tokens);
+                        let node = ExpressionNode::new_node(tokens);
                         ExpressionNode::Prefix(PrefixNode {
                             prefix: TokenNode {
                                 token: Token::PrefixOp(op),
@@ -82,7 +85,7 @@ pub struct BinExpNode {
 }
 impl BinExpNode {
     pub fn new(tokens: &mut Tokens) -> ExpressionNode {
-        let lhs = ExpressionNode::new(tokens);
+        let lhs = ExpressionNode::new_node(tokens);
         BinExpNode::binary_expression(lhs, tokens, 0)
     }
     fn binary_expression(
@@ -103,7 +106,7 @@ impl BinExpNode {
                         token: Token::Op(op, property),
                     };
                     // TODO: impl error handling
-                    let mut rhs = ExpressionNode::new(tokens);
+                    let mut rhs = ExpressionNode::new_node(tokens);
                     while let Some(Token::Op(_, property2)) = tokens.peek() {
                         let (precedence, _associativity) =
                             (property2.precedence, property2.associativity);
@@ -175,7 +178,7 @@ pub struct PrefixNode {
 impl PrefixNode {
     pub fn new(tokens: &mut Tokens) -> ExpressionNode {
         let token = tokens.pop().unwrap();
-        let node = ExpressionNode::new(tokens);
+        let node = ExpressionNode::new_node(tokens);
         ExpressionNode::Prefix(PrefixNode {
             prefix: TokenNode { token },
             node: Box::new(node),

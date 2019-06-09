@@ -1,7 +1,6 @@
 use crate::lexer::token::*;
 use crate::parser::declare::*;
 use crate::parser::expression::node::ExpressionNode;
-use crate::parser::expression::parser::toplevel;
 
 use std::collections::VecDeque;
 
@@ -51,7 +50,7 @@ pub struct ExpressionStatementNode {
 }
 impl ExpressionStatementNode {
     pub fn new(tokens: &mut Tokens) -> ExpressionStatementNode {
-        let expression = toplevel(tokens);
+        let expression = ExpressionNode::new(tokens);
         match tokens.pop().unwrap() {
             Token::Semi => (),
             _ => panic!(),
@@ -67,7 +66,7 @@ pub struct ReturnStatementNode {
 impl ReturnStatementNode {
     pub fn new(tokens: &mut Tokens) -> ReturnStatementNode {
         tokens.pop(); // consume return
-        let expression = toplevel(tokens);
+        let expression = ExpressionNode::new(tokens);
         match tokens.pop().unwrap() {
             Token::Semi => (),
             _ => panic!(),
@@ -102,7 +101,7 @@ impl IfStatementNode {
     pub fn new(tokens: &mut Tokens) -> IfStatementNode {
         tokens.pop(); // consume if
         tokens.pop(); // consume (
-        let condition_expression = toplevel(tokens);
+        let condition_expression = ExpressionNode::new(tokens);
         tokens.pop(); // consume )
         let block = CompoundStatementNode::new(tokens);
         IfStatementNode {

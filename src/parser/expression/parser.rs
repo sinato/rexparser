@@ -1,10 +1,6 @@
 use crate::lexer::token::{Token, Tokens};
 use crate::parser::expression::node::*;
 
-pub fn toplevel(tokens: &mut Tokens) -> ExpressionNode {
-    BinExpNode::new(tokens)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -14,7 +10,7 @@ mod tests {
     fn run(input: String) -> ExpressionNode {
         let lexer = lexer::Lexer::new();
         let mut tokens = lexer.lex(input);
-        toplevel(&mut tokens)
+        ExpressionNode::new(&mut tokens)
     }
     fn get_num(num: i32) -> ExpressionNode {
         ExpressionNode::Token(TokenNode {

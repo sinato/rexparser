@@ -4,7 +4,6 @@ pub mod parser;
 
 use crate::lexer::token::*;
 use crate::parser::expression::node::*;
-use crate::parser::expression::parser::toplevel;
 use crate::parser::statement::StatementNode;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -116,7 +115,7 @@ impl DeclareVariableNode {
         if let Some(Token::Op(op, _)) = tokens.peek() {
             if op == "=" {
                 tokens.pop();
-                initialize_expression = Some(toplevel(tokens));
+                initialize_expression = Some(ExpressionNode::new(tokens));
             }
         }
         DeclareVariableNode {
