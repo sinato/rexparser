@@ -58,7 +58,8 @@ fn emit_program(emitter: &mut Emitter, node: ProgramNode) {
     // set builtin functions
     let i32_type = emitter.context.i32_type();
     let fn_type = i32_type.fn_type(&[i32_type.into(), i32_type.into()], false);
-    emitter.module.add_function("comp_int", fn_type, None);
+    emitter.module.add_function("eq_int", fn_type, None);
+    emitter.module.add_function("sgt_int", fn_type, None);
 
     let mut declares = node.declares;
     while let Some(declare) = declares.pop_front() {

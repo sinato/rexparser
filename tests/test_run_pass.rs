@@ -152,12 +152,6 @@ fn test_compare() {
 }
 
 #[test]
-fn test_comp_int() {
-    let filepath = "./tests/resources/test_comp_int.c";
-    run(filepath, "101");
-}
-
-#[test]
 fn test_if() {
     let filepath = "./tests/resources/test_if.c";
     run(filepath, "103");
@@ -167,4 +161,16 @@ fn test_if() {
 fn test_if2() {
     let filepath = "./tests/resources/test_if2.c";
     run(filepath, "54");
+}
+
+#[test]
+fn test_comp_int() {
+    let filepath = "./tests/resources/builtin/test_comp_int.c";
+    run(filepath, "101");
+}
+
+#[test]
+fn test_sgt_int() {
+    let filepath = "./tests/resources/builtin/test_sgt_int.c";
+    run(filepath, "8");
 }

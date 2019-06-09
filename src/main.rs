@@ -21,8 +21,7 @@ fn compiler(code: String) {
     emitter.print_to_file();
 
     // emit builtin functions.
-    let mut emitter = Emitter::new();
-    emit_builtin(&mut emitter);
+    emit_builtin();
 }
 
 fn main() {
