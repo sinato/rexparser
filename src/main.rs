@@ -5,6 +5,7 @@ mod emitter;
 mod lexer;
 mod parser;
 
+use emitter::builtin::emit_builtin;
 use emitter::Emitter;
 use lexer::lexer::Lexer;
 use parser::parser;
@@ -18,6 +19,10 @@ fn compiler(code: String) {
     let mut emitter = Emitter::new();
     emitter.emit(node);
     emitter.print_to_file();
+
+    // emit builtin functions.
+    let mut emitter = Emitter::new();
+    emit_builtin(&mut emitter);
 }
 
 fn main() {

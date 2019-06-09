@@ -11,7 +11,7 @@ fn run(filepath: &str, expect: &str) {
     // run generated IR and get returned status code
     let status = Command::new("sh")
         .arg("-c")
-        .arg("llvm-as compiled.ll; lli compiled.bc")
+        .arg("llvm-link -S -o runnable.ll compiled.ll builtin.ll; llvm-as runnable.ll; lli runnable.bc")
         .status()
         .expect("failed to execute process");
 
@@ -137,4 +137,16 @@ fn test_function_arr() {
 fn test_function_arr2() {
     let filepath = "./tests/resources/test_function_arr2.c";
     run(filepath, "32");
+}
+
+#[test]
+fn test_paren() {
+    let filepath = "./tests/resources/test_paren.c";
+    run(filepath, "20");
+}
+
+#[test]
+fn test_comp_int() {
+    let filepath = "./tests/resources/test_comp_int.c";
+    run(filepath, "101");
 }
