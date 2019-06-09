@@ -105,3 +105,23 @@ pub fn emit_comma_as_parameters(emitter: &mut Emitter, node: ExpressionNode) -> 
         _ => panic!(),
     }
 }
+
+pub fn emit_compare_expression(
+    emitter: &mut Emitter,
+    operator: &str,
+    lhs: BasicValueEnum,
+    rhs: BasicValueEnum,
+) -> IntValue {
+    let fn_value = match emitter.module.get_function(operator) {
+        Some(value) => value,
+        None => panic!(format!("call of undeclared function {}", operator)),
+    };
+    let arguments: Vec<BasicValueEnum> = vec![lhs, rhs];
+    let func_call_site = emitter.builder.build_call(fn_value, &arguments, "");
+    let val = func_call_site
+        .try_as_basic_value()
+        .left()
+        .unwrap()
+        .into_int_value();
+    val
+}

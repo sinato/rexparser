@@ -40,21 +40,10 @@ fn emit_bin_exp(emitter: &mut Emitter, node: BinExpNode) -> Value {
                             "+" => emitter.builder.build_int_add(lhs, rhs, "add"),
                             "*" => emitter.builder.build_int_mul(lhs, rhs, "mul"),
                             "==" => {
-                                let fn_value = match emitter.module.get_function("eq_int") {
-                                    Some(value) => value,
-                                    None => {
-                                        panic!(format!("call of undeclared function {}", "eq_int"))
-                                    }
-                                };
-                                let arguments: Vec<BasicValueEnum> = vec![lhs.into(), rhs.into()];
-                                let func_call_site =
-                                    emitter.builder.build_call(fn_value, &arguments, "");
-                                let val = func_call_site
-                                    .try_as_basic_value()
-                                    .left()
-                                    .unwrap()
-                                    .into_int_value();
-                                val
+                                emit_compare_expression(emitter, "eq_int", lhs.into(), rhs.into())
+                            }
+                            ">" => {
+                                emit_compare_expression(emitter, "sgt_int", lhs.into(), rhs.into())
                             }
                             _ => panic!("unimpelemented operator."),
                         };
