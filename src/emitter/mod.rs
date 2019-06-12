@@ -2,6 +2,7 @@ pub mod builtin;
 pub mod environment;
 pub mod expression;
 
+use inkwell::basic_block::BasicBlock;
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::module::Module;
@@ -120,26 +121,41 @@ fn emit_function(emitter: &mut Emitter, node: DeclareNode) {
     }
 
     while let Some(statement_node) = statement_nodes.pop_front() {
-        emit_statement(emitter, statement_node, function_node.return_type.clone());
+        emit_statement(
+            emitter,
+            statement_node,
+            function_node.return_type.clone(),
+            None,
+        );
     }
 }
 
-fn emit_statement(emitter: &mut Emitter, node: StatementNode, return_type: BasicType) {
+fn emit_statement(
+    emitter: &mut Emitter,
+    node: StatementNode,
+    return_type: BasicType,
+    next_block: Option<&BasicBlock>,
+) {
     match node {
         StatementNode::Expression(node) => emit_expression_statement(emitter, node),
         StatementNode::Return(node) => emit_return_statement(emitter, node, return_type),
         StatementNode::Declare(node) => emit_declare_statement(emitter, node),
-        StatementNode::Compound(node) => emit_compound_statement(emitter, node),
-        StatementNode::If(node) => emit_if_statement(emitter, node),
+        StatementNode::Compound(node) => emit_compound_statement(emitter, node, next_block),
+        StatementNode::If(node) => emit_if_statement(emitter, node, next_block),
         StatementNode::While(node) => emit_while_statement(emitter, node),
+        StatementNode::Break(node) => emit_break_statement(emitter, node, next_block),
     }
 }
 
-fn emit_compound_statement(emitter: &mut Emitter, node: CompoundStatementNode) {
+fn emit_compound_statement(
+    emitter: &mut Emitter,
+    node: CompoundStatementNode,
+    next_block: Option<&BasicBlock>,
+) {
     let mut statements = node.statements;
     emitter.environment.push_scope();
     while let Some(statement) = statements.pop_front() {
-        emit_statement(emitter, statement, BasicType::Empty);
+        emit_statement(emitter, statement, BasicType::Empty, next_block);
     }
     emitter.environment.pop_scope();
 }
@@ -226,7 +242,11 @@ fn get_nested_type(emitter: &mut Emitter, value_type: BasicType) -> BasicTypeEnu
     }
 }
 
-fn emit_if_statement(emitter: &mut Emitter, node: IfStatementNode) {
+fn emit_if_statement(
+    emitter: &mut Emitter,
+    node: IfStatementNode,
+    next_block: Option<&BasicBlock>,
+) {
     // ---- condition ---- ifthen ---- ifcont
     //          ┗------------------------┛
 
@@ -252,7 +272,7 @@ fn emit_if_statement(emitter: &mut Emitter, node: IfStatementNode) {
         .build_conditional_branch(condition_val, &cont_bb, &then_bb);
 
     emitter.builder.position_at_end(&then_bb);
-    emit_compound_statement(emitter, node.block);
+    emit_compound_statement(emitter, node.block, next_block);
     emitter.builder.build_unconditional_branch(&cont_bb);
 
     emitter.builder.position_at_end(&cont_bb);
@@ -286,8 +306,19 @@ fn emit_while_statement(emitter: &mut Emitter, node: WhileStatementNode) {
         .build_conditional_branch(condition_val, &cont_bb, &then_bb);
 
     emitter.builder.position_at_end(&then_bb);
-    emit_compound_statement(emitter, node.block);
+    emit_compound_statement(emitter, node.block, Some(&cont_bb));
     emitter.builder.build_unconditional_branch(&comp_bb);
 
     emitter.builder.position_at_end(&cont_bb);
+}
+
+fn emit_break_statement(
+    emitter: &mut Emitter,
+    _node: BreakStatementNode,
+    next_block: Option<&BasicBlock>,
+) {
+    match next_block {
+        Some(next_block) => emitter.builder.build_unconditional_branch(next_block),
+        None => panic!(""),
+    };
 }

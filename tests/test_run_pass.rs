@@ -182,6 +182,12 @@ fn test_increment() {
 }
 
 #[test]
+fn test_break() {
+    let filepath = "./tests/resources/test_break.c";
+    run(filepath, "100");
+}
+
+#[test]
 fn test_comp_int() {
     let filepath = "./tests/resources/builtin/test_comp_int.c";
     run(filepath, "101");

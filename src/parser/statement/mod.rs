@@ -12,6 +12,7 @@ pub enum StatementNode {
     Compound(CompoundStatementNode),
     If(IfStatementNode),
     While(WhileStatementNode),
+    Break(BreakStatementNode),
 }
 impl StatementNode {
     pub fn new(tokens: &mut Tokens) -> StatementNode {
@@ -21,6 +22,7 @@ impl StatementNode {
             Token::CurlyS => StatementNode::Compound(CompoundStatementNode::new(tokens)),
             Token::If => StatementNode::If(IfStatementNode::new(tokens)),
             Token::While => StatementNode::While(WhileStatementNode::new(tokens)),
+            Token::Break => StatementNode::Break(BreakStatementNode::new(tokens)),
             _ => StatementNode::Expression(ExpressionStatementNode::new(tokens)),
         }
     }
@@ -129,5 +131,15 @@ impl WhileStatementNode {
             condition_expression,
             block,
         }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct BreakStatementNode {}
+impl BreakStatementNode {
+    pub fn new(tokens: &mut Tokens) -> BreakStatementNode {
+        tokens.pop(); // consume break
+        tokens.pop(); // consume ;
+        BreakStatementNode {}
     }
 }
