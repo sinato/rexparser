@@ -206,6 +206,12 @@ fn test_for() {
 }
 
 #[test]
+fn test_for2() {
+    let filepath = "./tests/resources/test_for2.c";
+    run(filepath, "24");
+}
+
+#[test]
 fn test_for_break() {
     let filepath = "./tests/resources/test_for_break.c";
     run(filepath, "15");
