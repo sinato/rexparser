@@ -221,7 +221,7 @@ fn emit_prefix(emitter: &mut Emitter, node: PrefixNode) -> Value {
                             .build_load(alloca, &identifier)
                             .into_int_value();
                         let const_one = emitter.context.i32_type().const_int(1, false);
-                        let added_val = emitter.builder.build_int_add(val, const_one, "");
+                        let added_val = emitter.builder.build_int_add(val, const_one, "preinc");
                         emitter.builder.build_store(alloca, added_val);
                         Value::Int(added_val)
                     }
@@ -247,7 +247,7 @@ fn emit_suffix(emitter: &mut Emitter, node: SuffixNode) -> Value {
                         .build_load(alloca, &identifier)
                         .into_int_value();
                     let const_one = emitter.context.i32_type().const_int(1, false);
-                    let incremented_val = emitter.builder.build_int_add(val, const_one, "");
+                    let incremented_val = emitter.builder.build_int_add(val, const_one, "postinc");
                     emitter.builder.build_store(alloca, incremented_val);
                     Value::Int(val)
                 }
