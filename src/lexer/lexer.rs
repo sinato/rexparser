@@ -11,6 +11,7 @@ pub struct Lexer {
 pub fn get_property(op: &String) -> Property {
     let mut map = HashMap::new();
     map.insert("=", (2, Associativity::Right));
+    map.insert("+=", (2, Associativity::Right));
     map.insert("==", (9, Associativity::Left));
     map.insert(">", (10, Associativity::Left));
     map.insert("<", (10, Associativity::Left));
@@ -48,7 +49,7 @@ impl Lexer {
             ("CURLY_E", r"\}"),
             ("PREFIXOP", r"((\s|^)\+\+)|&"),
             ("SUFFIXOP", r"(\+\+|\[|\()"),
-            ("OP", r"((==)|>|<|\+|-|\*|=|,)"),
+            ("OP", r"((\+=)|(==)|>|<|\+|-|\*|=|,)"),
             ("IDE", r"[a-z_]+"),
         ];
         let re = make_regex(&token_patterns);

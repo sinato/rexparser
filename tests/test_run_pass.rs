@@ -188,6 +188,12 @@ fn test_break() {
 }
 
 #[test]
+fn test_assign_add() {
+    let filepath = "./tests/resources/test_assign_add.c";
+    run(filepath, "15");
+}
+
+#[test]
 fn test_comp_int() {
     let filepath = "./tests/resources/builtin/test_comp_int.c";
     run(filepath, "101");

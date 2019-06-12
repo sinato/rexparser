@@ -26,10 +26,31 @@ fn emit_bin_exp(emitter: &mut Emitter, node: BinExpNode) -> Value {
     };
     match operator.as_ref() {
         "=" => {
-            let (alloca, alloca_type, identifier): (PointerValue, BasicType, String) =
+            let (alloca, alloca_type, _identifier): (PointerValue, BasicType, String) =
                 emit_expression_as_pointer(emitter, *node.lhs);
             let val: Value = emit_expression(emitter, *node.rhs);
             emit_equal_expression(emitter, alloca, alloca_type, val)
+        }
+        "+=" => {
+            let (alloca, alloca_type, identifier): (PointerValue, BasicType, String) =
+                emit_expression_as_pointer(emitter, *node.lhs);
+            match alloca_type {
+                BasicType::Int => {
+                    let val = emitter
+                        .builder
+                        .build_load(alloca, &identifier)
+                        .into_int_value();
+
+                    let add_val = match emit_expression(emitter, *node.rhs) {
+                        Value::Int(value) => value,
+                        _ => panic!(),
+                    };
+                    let added_val = emitter.builder.build_int_add(val, add_val, "");
+                    emitter.builder.build_store(alloca, added_val);
+                    Value::Int(added_val)
+                }
+                _ => panic!(),
+            }
         }
         _ => {
             let lhs = emit_expression(emitter, *node.lhs);
