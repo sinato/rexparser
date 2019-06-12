@@ -186,26 +186,48 @@ fn emit_token(emitter: &mut Emitter, node: TokenNode) -> Value {
 fn emit_prefix(emitter: &mut Emitter, node: PrefixNode) -> Value {
     let prefix = node.prefix;
     let expression = *node.node;
-    let val = emit_expression(emitter, expression);
     match prefix.token {
         Token::PrefixOp(op) => match op.as_ref() {
-            "&" => match val {
-                Value::Int(val) => {
-                    let alloca = emitter.builder.build_alloca(emitter.context.i32_type(), "");
-                    emitter.builder.build_store(alloca, val);
-                    Value::Pointer(alloca, BasicType::Int)
-                }
-                _ => panic!(),
-            },
-            "*" => match val {
-                Value::Pointer(val, val_type) => match val_type {
-                    BasicType::Int => {
-                        Value::Int(emitter.builder.build_load(val, "").into_int_value())
+            "&" => {
+                let val = emit_expression(emitter, expression);
+                match val {
+                    Value::Int(val) => {
+                        let alloca = emitter.builder.build_alloca(emitter.context.i32_type(), "");
+                        emitter.builder.build_store(alloca, val);
+                        Value::Pointer(alloca, BasicType::Int)
                     }
                     _ => panic!(),
-                },
-                _ => panic!(),
-            },
+                }
+            }
+            "*" => {
+                let val = emit_expression(emitter, expression);
+                match val {
+                    Value::Pointer(val, val_type) => match val_type {
+                        BasicType::Int => {
+                            Value::Int(emitter.builder.build_load(val, "").into_int_value())
+                        }
+                        _ => panic!(),
+                    },
+                    _ => panic!(),
+                }
+            }
+            "++" => {
+                let (alloca, alloca_type, identifier): (PointerValue, BasicType, String) =
+                    emit_expression_as_pointer(emitter, expression);
+                match alloca_type {
+                    BasicType::Int => {
+                        let val = emitter
+                            .builder
+                            .build_load(alloca, &identifier)
+                            .into_int_value();
+                        let const_one = emitter.context.i32_type().const_int(1, false);
+                        let added_val = emitter.builder.build_int_add(val, const_one, "");
+                        emitter.builder.build_store(alloca, added_val);
+                        Value::Int(added_val)
+                    }
+                    _ => panic!(),
+                }
+            }
             _ => panic!(),
         },
         _ => panic!(),

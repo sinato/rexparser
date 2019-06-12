@@ -182,6 +182,12 @@ fn test_increment() {
 }
 
 #[test]
+fn test_increment_pre() {
+    let filepath = "./tests/resources/test_increment_pre.c";
+    run(filepath, "44");
+}
+
+#[test]
 fn test_break() {
     let filepath = "./tests/resources/test_break.c";
     run(filepath, "100");
