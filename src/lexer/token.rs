@@ -16,7 +16,7 @@ pub enum BasicType {
     Float,
     Pointer(Box<BasicType>),
     Array(Box<BasicType>, u32),
-    Empty,
+    Void,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -32,6 +32,7 @@ pub enum Token {
     If,
     While,
     Break,
+    For,
     Semi,
     CurlyS,
     CurlyE,
@@ -67,6 +68,7 @@ impl std::fmt::Display for Token {
             Token::If => write!(f, "if"),
             Token::While => write!(f, "while"),
             Token::Break => write!(f, "break"),
+            Token::For => write!(f, "for"),
             Token::Semi => write!(f, ";"),
             Token::CurlyS => write!(f, "{{"),
             Token::CurlyE => write!(f, "}}"),

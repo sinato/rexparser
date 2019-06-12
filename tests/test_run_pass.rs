@@ -200,6 +200,12 @@ fn test_assign_add() {
 }
 
 #[test]
+fn test_for() {
+    let filepath = "./tests/resources/test_for.c";
+    run(filepath, "45");
+}
+
+#[test]
 fn test_comp_int() {
     let filepath = "./tests/resources/builtin/test_comp_int.c";
     run(filepath, "101");

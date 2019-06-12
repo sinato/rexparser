@@ -11,6 +11,7 @@ pub enum StatementNode {
     Declare(DeclareStatementNode),
     Compound(CompoundStatementNode),
     If(IfStatementNode),
+    For(ForStatementNode),
     While(WhileStatementNode),
     Break(BreakStatementNode),
 }
@@ -23,6 +24,7 @@ impl StatementNode {
             Token::If => StatementNode::If(IfStatementNode::new(tokens)),
             Token::While => StatementNode::While(WhileStatementNode::new(tokens)),
             Token::Break => StatementNode::Break(BreakStatementNode::new(tokens)),
+            Token::For => StatementNode::For(ForStatementNode::new(tokens)),
             _ => StatementNode::Expression(ExpressionStatementNode::new(tokens)),
         }
     }
@@ -141,5 +143,31 @@ impl BreakStatementNode {
         tokens.pop(); // consume break
         tokens.pop(); // consume ;
         BreakStatementNode {}
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct ForStatementNode {
+    pub first_statement: Box<StatementNode>,
+    pub condition_expression: ExpressionNode,
+    pub loop_expression: ExpressionNode,
+    pub block: CompoundStatementNode,
+}
+impl ForStatementNode {
+    pub fn new(tokens: &mut Tokens) -> ForStatementNode {
+        tokens.pop(); // consume for
+        tokens.pop(); // consume (
+        let first_statement = Box::new(StatementNode::new(tokens));
+        let condition_expression = ExpressionNode::new(tokens);
+        tokens.pop(); // consume ;
+        let loop_expression = ExpressionNode::new(tokens);
+        tokens.pop(); // consume )
+        let block = CompoundStatementNode::new(tokens);
+        ForStatementNode {
+            first_statement,
+            condition_expression,
+            loop_expression,
+            block,
+        }
     }
 }

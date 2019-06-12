@@ -144,6 +144,7 @@ fn emit_statement(
         StatementNode::If(node) => emit_if_statement(emitter, node, next_block),
         StatementNode::While(node) => emit_while_statement(emitter, node),
         StatementNode::Break(node) => emit_break_statement(emitter, node, next_block),
+        StatementNode::For(node) => emit_for_statement(emitter, node, next_block),
     }
 }
 
@@ -155,7 +156,7 @@ fn emit_compound_statement(
     let mut statements = node.statements;
     emitter.environment.push_scope();
     while let Some(statement) = statements.pop_front() {
-        emit_statement(emitter, statement, BasicType::Empty, next_block);
+        emit_statement(emitter, statement, BasicType::Void, next_block);
     }
     emitter.environment.pop_scope();
 }
@@ -321,4 +322,49 @@ fn emit_break_statement(
         Some(next_block) => emitter.builder.build_unconditional_branch(next_block),
         None => panic!(""),
     };
+}
+
+fn emit_for_statement(
+    emitter: &mut Emitter,
+    node: ForStatementNode,
+    next_block: Option<&BasicBlock>,
+) {
+    // setup
+    let function = match emitter.module.get_last_function() {
+        Some(func) => func,
+        None => panic!(),
+    };
+    let comp_bb = function.append_basic_block("comp");
+    let then_bb = function.append_basic_block("then");
+    let cont_bb = function.append_basic_block("cont");
+
+    // emit first statement
+    emitter.environment.push_scope();
+    emit_statement(emitter, *node.first_statement, BasicType::Void, None);
+    emitter.builder.build_unconditional_branch(&comp_bb);
+
+    // check condition
+    emitter.builder.position_at_end(&comp_bb);
+    let condition_val = match emit_expression(emitter, node.condition_expression) {
+        Value::Int(val) => val,
+        _ => panic!("TODO"),
+    };
+    let const_one = emitter.context.i32_type().const_int(0, false);
+    let condition_val =
+        emitter
+            .builder
+            .build_int_compare(IntPredicate::EQ, condition_val, const_one, "");
+    emitter
+        .builder
+        .build_conditional_branch(condition_val, &cont_bb, &then_bb);
+
+    // emit the block
+    emitter.builder.position_at_end(&then_bb);
+    emit_compound_statement(emitter, node.block, Some(&cont_bb));
+    emit_expression(emitter, node.loop_expression);
+    emitter.builder.build_unconditional_branch(&comp_bb);
+
+    emitter.builder.position_at_end(&cont_bb);
+
+    emitter.environment.pop_scope();
 }
