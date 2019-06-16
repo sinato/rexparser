@@ -29,9 +29,37 @@ pub enum Value {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+pub enum Control {
+    Continue,
+    Break,
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub struct NextBlocks<'a> {
     continue_block: Option<&'a BasicBlock>,
     break_block: Option<&'a BasicBlock>,
+}
+
+struct Delay<T, F> {
+    value: Option<T>,
+    func: F,
+}
+impl<T, F> Delay<T, F>
+where
+    F: Fn() -> T,
+{
+    fn new(f: F) -> Delay<T, F> {
+        Delay {
+            value: None,
+            func: f,
+        }
+    }
+    fn force(&mut self) -> &T {
+        if self.value.is_none() {
+            self.value = Some((self.func)());
+        }
+        self.value.as_ref().unwrap()
+    }
 }
 
 pub struct Emitter {
@@ -136,9 +164,17 @@ fn emit_function(emitter: &mut Emitter, node: DeclareNode) {
     while let Some(statement_node) = statement_nodes.pop_front() {
         emit_statement(emitter, statement_node, next_blocks.clone());
     }
+    let last_bb = func.get_last_basic_block().unwrap();
+    match last_bb.get_last_instruction() {
+        Some(_) => (),
+        None => {
+            let const_zero = emitter.context.i32_type().const_int(0, false);
+            emitter.builder.build_return(Some(&const_zero));
+        }
+    }
 }
 
-fn emit_statement(emitter: &mut Emitter, node: StatementNode, next_block: NextBlocks) {
+fn emit_statement(emitter: &mut Emitter, node: StatementNode, next_block: NextBlocks) -> Control {
     match node {
         StatementNode::Expression(node) => emit_expression_statement(emitter, node),
         StatementNode::Return(node) => emit_return_statement(emitter, node),
@@ -156,20 +192,27 @@ fn emit_compound_statement(
     emitter: &mut Emitter,
     node: CompoundStatementNode,
     next_block: NextBlocks,
-) {
+) -> Control {
     let mut statements = node.statements;
     emitter.environment.push_scope();
+    let mut control = Control::Continue;
     while let Some(statement) = statements.pop_front() {
-        emit_statement(emitter, statement, next_block.clone());
+        control = emit_statement(emitter, statement, next_block.clone());
+        match control {
+            Control::Continue => continue,
+            Control::Break => break,
+        }
     }
     emitter.environment.pop_scope();
+    control
 }
 
-fn emit_expression_statement(emitter: &mut Emitter, node: ExpressionStatementNode) {
+fn emit_expression_statement(emitter: &mut Emitter, node: ExpressionStatementNode) -> Control {
     emit_expression(emitter, node.expression);
+    Control::Continue
 }
 
-fn emit_return_statement(emitter: &mut Emitter, node: ReturnStatementNode) {
+fn emit_return_statement(emitter: &mut Emitter, node: ReturnStatementNode) -> Control {
     let ret = emit_expression(emitter, node.expression);
     let function = emitter.module.get_last_function().expect("a function");
     let return_type = function.get_return_type();
@@ -191,9 +234,10 @@ fn emit_return_statement(emitter: &mut Emitter, node: ReturnStatementNode) {
         }
         _ => panic!(),
     }
+    Control::Break
 }
 
-fn emit_declare_statement(emitter: &mut Emitter, node: DeclareStatementNode) {
+fn emit_declare_statement(emitter: &mut Emitter, node: DeclareStatementNode) -> Control {
     let node = node.declare_variable_node;
     let identifier = node.identifier;
     let value_type = node.value_type;
@@ -207,6 +251,7 @@ fn emit_declare_statement(emitter: &mut Emitter, node: DeclareStatementNode) {
     emitter
         .environment
         .insert_new(identifier, (alloca, value_type));
+    Control::Continue
 }
 
 fn emit_declare_statement_alloca(
@@ -249,39 +294,88 @@ fn get_nested_type(emitter: &mut Emitter, value_type: BasicType) -> BasicTypeEnu
     }
 }
 
-fn emit_if_statement(emitter: &mut Emitter, node: IfStatementNode, next_block: NextBlocks) {
+fn emit_if_statement(
+    emitter: &mut Emitter,
+    node: IfStatementNode,
+    next_blocks: NextBlocks,
+) -> Control {
     // ---- condition ---- ifthen ---- ifcont
     //          ┗------------------------┛
-
+    //
     let function = match emitter.module.get_last_function() {
         Some(func) => func,
         None => panic!(),
     };
-    let then_bb = function.append_basic_block("ifthen");
-    let cont_bb = function.append_basic_block("ifcont");
+    match node.else_block {
+        Some(else_block) => {
+            let then_bb = function.append_basic_block("ifthen");
+            let else_bb = function.append_basic_block("ifelse");
+            let mut lazy_cont_bb = Delay::new(|| function.append_basic_block("ifcont"));
 
-    let condition_val = match emit_expression(emitter, node.condition_expression) {
-        Value::Int(val) => val,
-        _ => panic!("TODO"),
-    };
-    let const_one = emitter.context.i32_type().const_int(0, false);
-    let condition_val =
-        emitter
-            .builder
-            .build_int_compare(IntPredicate::EQ, condition_val, const_one, "eq");
+            let condition_val = match emit_expression(emitter, node.condition_expression) {
+                Value::Int(val) => val,
+                _ => panic!("TODO"),
+            };
+            let const_one = emitter.context.i32_type().const_int(0, false);
+            let condition_val =
+                emitter
+                    .builder
+                    .build_int_compare(IntPredicate::EQ, condition_val, const_one, "eq");
+            emitter
+                .builder
+                .build_conditional_branch(condition_val, &else_bb, &then_bb);
 
-    emitter
-        .builder
-        .build_conditional_branch(condition_val, &cont_bb, &then_bb);
+            emitter.builder.position_at_end(&then_bb);
+            let control_if = emit_statement(emitter, *node.block, next_blocks.clone());
+            if control_if == Control::Continue {
+                let cont_bb = lazy_cont_bb.force();
+                emitter.builder.build_unconditional_branch(&cont_bb);
+            }
 
-    emitter.builder.position_at_end(&then_bb);
-    emit_compound_statement(emitter, node.block, next_block);
-    emitter.builder.build_unconditional_branch(&cont_bb);
+            emitter.builder.position_at_end(&else_bb);
+            let control_else = emit_statement(emitter, *else_block, next_blocks);
+            if control_else == Control::Continue {
+                let cont_bb = lazy_cont_bb.force();
+                emitter.builder.build_unconditional_branch(&cont_bb);
+            }
 
-    emitter.builder.position_at_end(&cont_bb);
+            if control_if != Control::Break || control_else != Control::Break {
+                let cont_bb = lazy_cont_bb.force();
+                emitter.builder.position_at_end(&cont_bb);
+                Control::Continue
+            } else {
+                Control::Break
+            }
+        }
+        None => {
+            let then_bb = function.append_basic_block("ifthen");
+            let cont_bb = function.append_basic_block("ifcont");
+
+            let condition_val = match emit_expression(emitter, node.condition_expression) {
+                Value::Int(val) => val,
+                _ => panic!("TODO"),
+            };
+            let const_one = emitter.context.i32_type().const_int(0, false);
+            let condition_val =
+                emitter
+                    .builder
+                    .build_int_compare(IntPredicate::EQ, condition_val, const_one, "eq");
+
+            emitter
+                .builder
+                .build_conditional_branch(condition_val, &cont_bb, &then_bb);
+
+            emitter.builder.position_at_end(&then_bb);
+            emit_statement(emitter, *node.block, next_blocks);
+            emitter.builder.build_unconditional_branch(&cont_bb);
+
+            emitter.builder.position_at_end(&cont_bb);
+            Control::Continue
+        }
+    }
 }
 
-fn emit_while_statement(emitter: &mut Emitter, node: WhileStatementNode) {
+fn emit_while_statement(emitter: &mut Emitter, node: WhileStatementNode) -> Control {
     // ---- comp ---- then ---- cont
     //       ┗--------------------┛
     let function = match emitter.module.get_last_function() {
@@ -313,31 +407,38 @@ fn emit_while_statement(emitter: &mut Emitter, node: WhileStatementNode) {
         break_block: Some(&cont_bb),
         continue_block: Some(&comp_bb),
     };
-    emit_compound_statement(emitter, node.block, next_blocks);
+    emit_statement(emitter, *node.block, next_blocks);
     emitter.builder.build_unconditional_branch(&comp_bb);
 
     emitter.builder.position_at_end(&cont_bb);
+    Control::Continue
 }
 
 fn emit_continue_statement(
     emitter: &mut Emitter,
     _node: ContinueStatementNode,
     next_block: NextBlocks,
-) {
+) -> Control {
     match next_block.continue_block {
         Some(next_block) => emitter.builder.build_unconditional_branch(next_block),
         None => panic!(""),
     };
+    Control::Break
 }
 
-fn emit_break_statement(emitter: &mut Emitter, _node: BreakStatementNode, next_block: NextBlocks) {
+fn emit_break_statement(
+    emitter: &mut Emitter,
+    _node: BreakStatementNode,
+    next_block: NextBlocks,
+) -> Control {
     match next_block.break_block {
         Some(next_block) => emitter.builder.build_unconditional_branch(next_block),
         None => panic!(""),
     };
+    Control::Break
 }
 
-fn emit_for_statement(emitter: &mut Emitter, node: ForStatementNode) {
+fn emit_for_statement(emitter: &mut Emitter, node: ForStatementNode) -> Control {
     // setup
     let function = match emitter.module.get_last_function() {
         Some(func) => func,
@@ -378,7 +479,7 @@ fn emit_for_statement(emitter: &mut Emitter, node: ForStatementNode) {
         break_block: Some(&cont_bb),
         continue_block: Some(&thir_bb),
     };
-    emit_compound_statement(emitter, node.block, next_blocks);
+    emit_statement(emitter, *node.block, next_blocks);
     emitter.builder.build_unconditional_branch(&thir_bb);
 
     emitter.builder.position_at_end(&thir_bb);
@@ -388,4 +489,5 @@ fn emit_for_statement(emitter: &mut Emitter, node: ForStatementNode) {
     emitter.builder.position_at_end(&cont_bb);
 
     emitter.environment.pop_scope();
+    Control::Continue
 }

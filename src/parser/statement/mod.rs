@@ -103,7 +103,8 @@ impl DeclareStatementNode {
 #[derive(Debug, PartialEq, Clone)]
 pub struct IfStatementNode {
     pub condition_expression: ExpressionNode,
-    pub block: CompoundStatementNode,
+    pub block: Box<StatementNode>,
+    pub else_block: Option<Box<StatementNode>>,
 }
 impl IfStatementNode {
     pub fn new(tokens: &mut Tokens) -> IfStatementNode {
@@ -111,10 +112,21 @@ impl IfStatementNode {
         tokens.pop(); // consume (
         let condition_expression = ExpressionNode::new(tokens);
         tokens.pop(); // consume )
-        let block = CompoundStatementNode::new(tokens);
+        let block = Box::new(StatementNode::new(tokens));
+        let else_block = match tokens.peek() {
+            Some(token) => match token {
+                Token::Else => {
+                    tokens.pop(); // consume else
+                    Some(Box::new(StatementNode::new(tokens)))
+                }
+                _ => None,
+            },
+            None => None,
+        };
         IfStatementNode {
             condition_expression,
             block,
+            else_block,
         }
     }
 }
@@ -122,7 +134,7 @@ impl IfStatementNode {
 #[derive(Debug, PartialEq, Clone)]
 pub struct WhileStatementNode {
     pub condition_expression: ExpressionNode,
-    pub block: CompoundStatementNode,
+    pub block: Box<StatementNode>,
 }
 impl WhileStatementNode {
     pub fn new(tokens: &mut Tokens) -> WhileStatementNode {
@@ -130,7 +142,7 @@ impl WhileStatementNode {
         tokens.pop(); // consume (
         let condition_expression = ExpressionNode::new(tokens);
         tokens.pop(); // consume )
-        let block = CompoundStatementNode::new(tokens);
+        let block = Box::new(StatementNode::new(tokens));
         WhileStatementNode {
             condition_expression,
             block,
@@ -163,7 +175,7 @@ pub struct ForStatementNode {
     pub first_statement: Box<StatementNode>,
     pub condition_expression: ExpressionNode,
     pub loop_expression: ExpressionNode,
-    pub block: CompoundStatementNode,
+    pub block: Box<StatementNode>,
 }
 impl ForStatementNode {
     pub fn new(tokens: &mut Tokens) -> ForStatementNode {
@@ -174,7 +186,7 @@ impl ForStatementNode {
         tokens.pop(); // consume ;
         let loop_expression = ExpressionNode::new(tokens);
         tokens.pop(); // consume )
-        let block = CompoundStatementNode::new(tokens);
+        let block = Box::new(StatementNode::new(tokens));
         ForStatementNode {
             first_statement,
             condition_expression,

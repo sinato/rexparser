@@ -221,6 +221,12 @@ fn test_for2() {
 }
 
 #[test]
+fn test_for3() {
+    let filepath = "./tests/resources/test_for3.c";
+    run(filepath, "", "60");
+}
+
+#[test]
 fn test_for_break() {
     let filepath = "./tests/resources/test_for_break.c";
     run(filepath, "", "15");
@@ -248,6 +254,30 @@ fn test_function_return() {
 fn test_putchar() {
     let filepath = "./tests/resources/test_putchar.c";
     run(filepath, "s", "33");
+}
+
+#[test]
+fn test_without_curly() {
+    let filepath = "./tests/resources/test_without_curly.c";
+    run(filepath, "", "71");
+}
+
+#[test]
+fn test_if_else() {
+    let filepath = "./tests/resources/test_if_else.c";
+    run(filepath, "", "91");
+}
+
+#[test]
+fn test_if_else2() {
+    let filepath = "./tests/resources/test_if_else2.c";
+    run(filepath, "", "57");
+}
+
+#[test]
+fn test_if_else3() {
+    let filepath = "./tests/resources/test_if_else3.c";
+    run(filepath, "", "100");
 }
 
 #[test]
