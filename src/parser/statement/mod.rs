@@ -14,6 +14,7 @@ pub enum StatementNode {
     For(ForStatementNode),
     While(WhileStatementNode),
     Break(BreakStatementNode),
+    Continue(ContinueStatementNode),
 }
 impl StatementNode {
     pub fn new(tokens: &mut Tokens) -> StatementNode {
@@ -24,6 +25,7 @@ impl StatementNode {
             Token::If => StatementNode::If(IfStatementNode::new(tokens)),
             Token::While => StatementNode::While(WhileStatementNode::new(tokens)),
             Token::Break => StatementNode::Break(BreakStatementNode::new(tokens)),
+            Token::Continue => StatementNode::Continue(ContinueStatementNode::new(tokens)),
             Token::For => StatementNode::For(ForStatementNode::new(tokens)),
             _ => StatementNode::Expression(ExpressionStatementNode::new(tokens)),
         }
@@ -143,6 +145,16 @@ impl BreakStatementNode {
         tokens.pop(); // consume break
         tokens.pop(); // consume ;
         BreakStatementNode {}
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct ContinueStatementNode {}
+impl ContinueStatementNode {
+    pub fn new(tokens: &mut Tokens) -> ContinueStatementNode {
+        tokens.pop(); // consume continue
+        tokens.pop(); // consume ;
+        ContinueStatementNode {}
     }
 }
 

@@ -218,6 +218,18 @@ fn test_for_break() {
 }
 
 #[test]
+fn test_continue() {
+    let filepath = "./tests/resources/test_continue.c";
+    run(filepath, "108");
+}
+
+#[test]
+fn test_continue2() {
+    let filepath = "./tests/resources/test_continue2.c";
+    run(filepath, "55");
+}
+
+#[test]
 fn test_comp_int() {
     let filepath = "./tests/resources/builtin/test_comp_int.c";
     run(filepath, "101");

@@ -45,7 +45,7 @@ fn emit_bin_exp(emitter: &mut Emitter, node: BinExpNode) -> Value {
                         Value::Int(value) => value,
                         _ => panic!(),
                     };
-                    let added_val = emitter.builder.build_int_add(val, add_val, "");
+                    let added_val = emitter.builder.build_int_add(val, add_val, "add");
                     emitter.builder.build_store(alloca, added_val);
                     Value::Int(added_val)
                 }
@@ -113,7 +113,7 @@ fn emit_bin_exp(emitter: &mut Emitter, node: BinExpNode) -> Value {
                                     emitter.builder.build_gep(
                                         array_alloca,
                                         &[emitter.context.i32_type().const_int(0, false), rhs],
-                                        "",
+                                        "add",
                                     )
                                 },
                                 _ => panic!("unimpelemented operator."),
@@ -192,7 +192,9 @@ fn emit_prefix(emitter: &mut Emitter, node: PrefixNode) -> Value {
                 let val = emit_expression(emitter, expression);
                 match val {
                     Value::Int(val) => {
-                        let alloca = emitter.builder.build_alloca(emitter.context.i32_type(), "");
+                        let alloca = emitter
+                            .builder
+                            .build_alloca(emitter.context.i32_type(), "ref");
                         emitter.builder.build_store(alloca, val);
                         Value::Pointer(alloca, BasicType::Int)
                     }
@@ -204,7 +206,7 @@ fn emit_prefix(emitter: &mut Emitter, node: PrefixNode) -> Value {
                 match val {
                     Value::Pointer(val, val_type) => match val_type {
                         BasicType::Int => {
-                            Value::Int(emitter.builder.build_load(val, "").into_int_value())
+                            Value::Int(emitter.builder.build_load(val, "star").into_int_value())
                         }
                         _ => panic!(),
                     },
@@ -290,7 +292,7 @@ fn emit_function_call(emitter: &mut Emitter, node: FunctionCallNode) -> Value {
         };
         arguments.push(argument);
     }
-    let func_call_site = emitter.builder.build_call(fn_value, &arguments, "");
+    let func_call_site = emitter.builder.build_call(fn_value, &arguments, "func");
     let val = func_call_site
         .try_as_basic_value()
         .left()

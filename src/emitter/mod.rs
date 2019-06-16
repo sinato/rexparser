@@ -28,6 +28,12 @@ pub enum Value {
     Array(ArrayValue, PointerValue, BasicType, u32),
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub struct NextBlocks<'a> {
+    continue_block: Option<&'a BasicBlock>,
+    break_block: Option<&'a BasicBlock>,
+}
+
 pub struct Emitter {
     pub context: Context,
     pub builder: Builder,
@@ -120,12 +126,16 @@ fn emit_function(emitter: &mut Emitter, node: DeclareNode) {
         }
     }
 
+    let next_blocks = NextBlocks {
+        break_block: None,
+        continue_block: None,
+    };
     while let Some(statement_node) = statement_nodes.pop_front() {
         emit_statement(
             emitter,
             statement_node,
             function_node.return_type.clone(),
-            None,
+            next_blocks.clone(),
         );
     }
 }
@@ -134,7 +144,7 @@ fn emit_statement(
     emitter: &mut Emitter,
     node: StatementNode,
     return_type: BasicType,
-    next_block: Option<&BasicBlock>,
+    next_block: NextBlocks,
 ) {
     match node {
         StatementNode::Expression(node) => emit_expression_statement(emitter, node),
@@ -144,19 +154,20 @@ fn emit_statement(
         StatementNode::If(node) => emit_if_statement(emitter, node, next_block),
         StatementNode::While(node) => emit_while_statement(emitter, node),
         StatementNode::Break(node) => emit_break_statement(emitter, node, next_block),
-        StatementNode::For(node) => emit_for_statement(emitter, node, next_block),
+        StatementNode::Continue(node) => emit_continue_statement(emitter, node, next_block),
+        StatementNode::For(node) => emit_for_statement(emitter, node),
     }
 }
 
 fn emit_compound_statement(
     emitter: &mut Emitter,
     node: CompoundStatementNode,
-    next_block: Option<&BasicBlock>,
+    next_block: NextBlocks,
 ) {
     let mut statements = node.statements;
     emitter.environment.push_scope();
     while let Some(statement) = statements.pop_front() {
-        emit_statement(emitter, statement, BasicType::Void, next_block);
+        emit_statement(emitter, statement, BasicType::Void, next_block.clone());
     }
     emitter.environment.pop_scope();
 }
@@ -243,11 +254,7 @@ fn get_nested_type(emitter: &mut Emitter, value_type: BasicType) -> BasicTypeEnu
     }
 }
 
-fn emit_if_statement(
-    emitter: &mut Emitter,
-    node: IfStatementNode,
-    next_block: Option<&BasicBlock>,
-) {
+fn emit_if_statement(emitter: &mut Emitter, node: IfStatementNode, next_block: NextBlocks) {
     // ---- condition ---- ifthen ---- ifcont
     //          ┗------------------------┛
 
@@ -266,7 +273,7 @@ fn emit_if_statement(
     let condition_val =
         emitter
             .builder
-            .build_int_compare(IntPredicate::EQ, condition_val, const_one, "");
+            .build_int_compare(IntPredicate::EQ, condition_val, const_one, "eq");
 
     emitter
         .builder
@@ -301,34 +308,41 @@ fn emit_while_statement(emitter: &mut Emitter, node: WhileStatementNode) {
     let condition_val =
         emitter
             .builder
-            .build_int_compare(IntPredicate::EQ, condition_val, const_one, "");
+            .build_int_compare(IntPredicate::EQ, condition_val, const_one, "eq");
     emitter
         .builder
         .build_conditional_branch(condition_val, &cont_bb, &then_bb);
 
     emitter.builder.position_at_end(&then_bb);
-    emit_compound_statement(emitter, node.block, Some(&cont_bb));
+    let next_blocks = NextBlocks {
+        break_block: Some(&cont_bb),
+        continue_block: Some(&comp_bb),
+    };
+    emit_compound_statement(emitter, node.block, next_blocks);
     emitter.builder.build_unconditional_branch(&comp_bb);
 
     emitter.builder.position_at_end(&cont_bb);
 }
 
-fn emit_break_statement(
+fn emit_continue_statement(
     emitter: &mut Emitter,
-    _node: BreakStatementNode,
-    next_block: Option<&BasicBlock>,
+    _node: ContinueStatementNode,
+    next_block: NextBlocks,
 ) {
-    match next_block {
+    match next_block.continue_block {
         Some(next_block) => emitter.builder.build_unconditional_branch(next_block),
         None => panic!(""),
     };
 }
 
-fn emit_for_statement(
-    emitter: &mut Emitter,
-    node: ForStatementNode,
-    next_block: Option<&BasicBlock>,
-) {
+fn emit_break_statement(emitter: &mut Emitter, _node: BreakStatementNode, next_block: NextBlocks) {
+    match next_block.break_block {
+        Some(next_block) => emitter.builder.build_unconditional_branch(next_block),
+        None => panic!(""),
+    };
+}
+
+fn emit_for_statement(emitter: &mut Emitter, node: ForStatementNode) {
     // setup
     let function = match emitter.module.get_last_function() {
         Some(func) => func,
@@ -336,11 +350,16 @@ fn emit_for_statement(
     };
     let comp_bb = function.append_basic_block("comp");
     let then_bb = function.append_basic_block("then");
+    let thir_bb = function.append_basic_block("thir");
     let cont_bb = function.append_basic_block("cont");
 
     // emit first statement
     emitter.environment.push_scope();
-    emit_statement(emitter, *node.first_statement, BasicType::Void, None);
+    let next_blocks = NextBlocks {
+        break_block: None,
+        continue_block: None,
+    };
+    emit_statement(emitter, *node.first_statement, BasicType::Void, next_blocks);
     emitter.builder.build_unconditional_branch(&comp_bb);
 
     // check condition
@@ -353,14 +372,21 @@ fn emit_for_statement(
     let condition_val =
         emitter
             .builder
-            .build_int_compare(IntPredicate::EQ, condition_val, const_one, "");
+            .build_int_compare(IntPredicate::EQ, condition_val, const_one, "foreq");
     emitter
         .builder
         .build_conditional_branch(condition_val, &cont_bb, &then_bb);
 
     // emit the block
     emitter.builder.position_at_end(&then_bb);
-    emit_compound_statement(emitter, node.block, Some(&cont_bb));
+    let next_blocks = NextBlocks {
+        break_block: Some(&cont_bb),
+        continue_block: Some(&thir_bb),
+    };
+    emit_compound_statement(emitter, node.block, next_blocks);
+    emitter.builder.build_unconditional_branch(&thir_bb);
+
+    emitter.builder.position_at_end(&thir_bb);
     emit_expression(emitter, node.loop_expression);
     emitter.builder.build_unconditional_branch(&comp_bb);
 
