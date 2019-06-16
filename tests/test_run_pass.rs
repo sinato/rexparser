@@ -230,6 +230,12 @@ fn test_continue2() {
 }
 
 #[test]
+fn test_function_return() {
+    let filepath = "./tests/resources/test_function_return.c";
+    run(filepath, "99");
+}
+
+#[test]
 fn test_comp_int() {
     let filepath = "./tests/resources/builtin/test_comp_int.c";
     run(filepath, "101");

@@ -131,24 +131,14 @@ fn emit_function(emitter: &mut Emitter, node: DeclareNode) {
         continue_block: None,
     };
     while let Some(statement_node) = statement_nodes.pop_front() {
-        emit_statement(
-            emitter,
-            statement_node,
-            function_node.return_type.clone(),
-            next_blocks.clone(),
-        );
+        emit_statement(emitter, statement_node, next_blocks.clone());
     }
 }
 
-fn emit_statement(
-    emitter: &mut Emitter,
-    node: StatementNode,
-    return_type: BasicType,
-    next_block: NextBlocks,
-) {
+fn emit_statement(emitter: &mut Emitter, node: StatementNode, next_block: NextBlocks) {
     match node {
         StatementNode::Expression(node) => emit_expression_statement(emitter, node),
-        StatementNode::Return(node) => emit_return_statement(emitter, node, return_type),
+        StatementNode::Return(node) => emit_return_statement(emitter, node),
         StatementNode::Declare(node) => emit_declare_statement(emitter, node),
         StatementNode::Compound(node) => emit_compound_statement(emitter, node, next_block),
         StatementNode::If(node) => emit_if_statement(emitter, node, next_block),
@@ -167,7 +157,7 @@ fn emit_compound_statement(
     let mut statements = node.statements;
     emitter.environment.push_scope();
     while let Some(statement) = statements.pop_front() {
-        emit_statement(emitter, statement, BasicType::Void, next_block.clone());
+        emit_statement(emitter, statement, next_block.clone());
     }
     emitter.environment.pop_scope();
 }
@@ -176,10 +166,12 @@ fn emit_expression_statement(emitter: &mut Emitter, node: ExpressionStatementNod
     emit_expression(emitter, node.expression);
 }
 
-fn emit_return_statement(emitter: &mut Emitter, node: ReturnStatementNode, return_type: BasicType) {
+fn emit_return_statement(emitter: &mut Emitter, node: ReturnStatementNode) {
     let ret = emit_expression(emitter, node.expression);
+    let function = emitter.module.get_last_function().expect("a function");
+    let return_type = function.get_return_type();
     match return_type {
-        BasicType::Int => {
+        BasicTypeEnum::IntType(_) => {
             let ret = match ret {
                 Value::Int(val) => val,
                 Value::Float(val) => {
@@ -359,7 +351,7 @@ fn emit_for_statement(emitter: &mut Emitter, node: ForStatementNode) {
         break_block: None,
         continue_block: None,
     };
-    emit_statement(emitter, *node.first_statement, BasicType::Void, next_blocks);
+    emit_statement(emitter, *node.first_statement, next_blocks);
     emitter.builder.build_unconditional_branch(&comp_bb);
 
     // check condition
