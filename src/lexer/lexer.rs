@@ -38,7 +38,7 @@ impl Lexer {
             ("FLOAT_NUM", r"(\d+\.\d+)"),
             ("INT_NUM", r"(\d+)"),
             ("SEMI", r";"),
-            ("TYPE", r"(int)|(float)"),
+            ("TYPE", r"(int)|(float)|(char)"),
             ("RETURN", r"return"),
             ("IF", r"if"),
             ("WHILE", r"while"),
@@ -52,6 +52,7 @@ impl Lexer {
             ("PREFIXOP", r"((\s|^)\+\+)|&"),
             ("SUFFIXOP", r"(\+\+|\[|\()"),
             ("OP", r"((\+=)|(==)|>|<|\+|-|\*|=|,)"),
+            ("CHAR", r"'[A-Za-z_0-9]'"),
             ("IDE", r"[a-z_]+"),
         ];
         let re = make_regex(&token_patterns);
@@ -82,6 +83,7 @@ impl Lexer {
                 "TYPE" => match val.as_ref() {
                     "int" => tokens.push(Token::Type(BasicType::Int)),
                     "float" => tokens.push(Token::Type(BasicType::Float)),
+                    "char" => tokens.push(Token::Type(BasicType::Int)),
                     _ => panic!("Unimplemented type."),
                 },
                 "RETURN" => tokens.push(Token::Return),
@@ -107,6 +109,11 @@ impl Lexer {
                     tokens.push(Token::Op(val.clone(), get_property(&val)))
                 }
                 "IDE" => tokens.push(Token::Ide(val)),
+                "CHAR" => {
+                    let chars: Vec<&str> = val.split("'").collect();
+                    let num: i32 = chars[1].chars().into_iter().nth(0).unwrap() as i32;
+                    tokens.push(Token::IntNum(num.to_string()))
+                }
                 _ => panic!("This is not an expected panic"),
             }
         }
