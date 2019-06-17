@@ -281,6 +281,12 @@ fn test_if_else3() {
 }
 
 #[test]
+fn test_and() {
+    let filepath = "./tests/resources/test_and.c";
+    run(filepath, "", "10");
+}
+
+#[test]
 fn test_comp_int() {
     let filepath = "./tests/resources/builtin/test_comp_int.c";
     run(filepath, "", "101");
@@ -290,4 +296,10 @@ fn test_comp_int() {
 fn test_sgt_int() {
     let filepath = "./tests/resources/builtin/test_sgt_int.c";
     run(filepath, "", "8");
+}
+
+#[test]
+fn test_and_int() {
+    let filepath = "./tests/resources/builtin/test_and_int.c";
+    run(filepath, "", "39");
 }

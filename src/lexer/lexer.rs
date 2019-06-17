@@ -12,6 +12,7 @@ pub fn get_property(op: &String) -> Property {
     let mut map = HashMap::new();
     map.insert("=", (2, Associativity::Right));
     map.insert("+=", (2, Associativity::Right));
+    map.insert("&&", (5, Associativity::Left));
     map.insert("==", (9, Associativity::Left));
     map.insert(">", (10, Associativity::Left));
     map.insert("<", (10, Associativity::Left));
@@ -50,11 +51,12 @@ impl Lexer {
             ("PAREN_E", r"\)"),
             ("CURLY_S", r"\{"),
             ("CURLY_E", r"\}"),
+            ("ANDOP", r"(&&)"),
             ("PREFIXOP", r"((\s|^)\+\+)|&"),
             ("SUFFIXOP", r"(\+\+|\[|\()"),
             ("OP", r"((\+=)|(==)|>|<|\+|-|\*|=|,)"),
             ("CHAR", r"'[A-Za-z_0-9]'"),
-            ("IDE", r"[a-z_]+"),
+            ("IDE", r"[A-Za-z_][A-Za-z_0-9]*"),
         ];
         let re = make_regex(&token_patterns);
         let names = get_names(&token_patterns);
@@ -98,6 +100,10 @@ impl Lexer {
                 "PAREN_E" => tokens.push(Token::ParenE),
                 "CURLY_S" => tokens.push(Token::CurlyS),
                 "CURLY_E" => tokens.push(Token::CurlyE),
+                "ANDOP" => {
+                    let val = val.trim_end().to_string();
+                    tokens.push(Token::Op(val.clone(), get_property(&val)))
+                }
                 "PREFIXOP" => {
                     let val = val.trim_start().to_string();
                     tokens.push(Token::PrefixOp(val));
