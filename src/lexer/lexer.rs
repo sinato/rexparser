@@ -12,6 +12,7 @@ pub fn get_property(op: &String) -> Property {
     let mut map = HashMap::new();
     map.insert("=", (2, Associativity::Right));
     map.insert("+=", (2, Associativity::Right));
+    map.insert("||", (4, Associativity::Left));
     map.insert("&&", (5, Associativity::Left));
     map.insert("==", (9, Associativity::Left));
     map.insert(">", (10, Associativity::Left));
@@ -54,7 +55,7 @@ impl Lexer {
             ("ANDOP", r"(&&)"),
             ("PREFIXOP", r"((\s|^)\+\+)|&"),
             ("SUFFIXOP", r"(\+\+|\[|\()"),
-            ("OP", r"((\+=)|(==)|>|<|\+|-|\*|=|,)"),
+            ("OP", r"((\|\|)|(\+=)|(==)|>|<|\+|-|\*|=|,)"),
             ("CHAR", r"'[A-Za-z_0-9]'"),
             ("IDE", r"[A-Za-z_][A-Za-z_0-9]*"),
         ];

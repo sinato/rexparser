@@ -97,6 +97,7 @@ fn emit_program(emitter: &mut Emitter, node: ProgramNode) {
     emitter.module.add_function("sgt_int", fn_type, None);
     emitter.module.add_function("slt_int", fn_type, None);
     emitter.module.add_function("and_int", fn_type, None);
+    emitter.module.add_function("or_int", fn_type, None);
 
     let fn_type = i32_type.fn_type(&[i32_type.into()], false);
     emitter.module.add_function("putchar", fn_type, None);
