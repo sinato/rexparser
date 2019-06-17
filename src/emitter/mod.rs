@@ -124,6 +124,7 @@ fn emit_function(emitter: &mut Emitter, node: DeclareNode) {
         let param_type = get_nested_type(emitter, val_type);
         param_types.push(param_type);
     }
+    emitter.environment.push_scope();
     let fn_type = emitter.context.i32_type().fn_type(&param_types, false);
     let func = emitter.module.add_function(&identifier, fn_type, None);
 
@@ -166,14 +167,7 @@ fn emit_function(emitter: &mut Emitter, node: DeclareNode) {
     while let Some(statement_node) = statement_nodes.pop_front() {
         emit_statement(emitter, statement_node, next_blocks.clone());
     }
-    let last_bb = func.get_last_basic_block().unwrap();
-    match last_bb.get_last_instruction() {
-        Some(_) => (),
-        None => {
-            let const_zero = emitter.context.i32_type().const_int(0, false);
-            emitter.builder.build_return(Some(&const_zero));
-        }
-    }
+    emitter.environment.pop_scope();
 }
 
 fn emit_statement(emitter: &mut Emitter, node: StatementNode, next_block: NextBlocks) -> Control {

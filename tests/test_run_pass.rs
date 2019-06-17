@@ -293,6 +293,12 @@ fn test_or() {
 }
 
 #[test]
+fn test_sub() {
+    let filepath = "./tests/resources/test_sub.c";
+    run(filepath, "", "88");
+}
+
+#[test]
 fn test_comp_int() {
     let filepath = "./tests/resources/builtin/test_comp_int.c";
     run(filepath, "", "101");

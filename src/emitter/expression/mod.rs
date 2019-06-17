@@ -60,6 +60,7 @@ fn emit_bin_exp(emitter: &mut Emitter, node: BinExpNode) -> Value {
                     Value::Int(rhs) => {
                         let val = match operator.as_ref() {
                             "+" => emitter.builder.build_int_add(lhs, rhs, "add"),
+                            "-" => emitter.builder.build_int_sub(lhs, rhs, "sub"),
                             "*" => emitter.builder.build_int_mul(lhs, rhs, "mul"),
                             "==" => {
                                 emit_compare_expression(emitter, "eq_int", lhs.into(), rhs.into())
@@ -76,7 +77,7 @@ fn emit_bin_exp(emitter: &mut Emitter, node: BinExpNode) -> Value {
                             "||" => {
                                 emit_compare_expression(emitter, "or_int", lhs.into(), rhs.into())
                             }
-                            _ => panic!("unimpelemented operator."),
+                            _ => panic!(format!("unimpelemented operator {}", operator)),
                         };
                         Value::Int(val)
                     }
