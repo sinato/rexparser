@@ -44,7 +44,9 @@ fn emit_comp_int(emitter: &mut Emitter, function_name: &str, operator: IntPredic
     emitter.builder.position_at_end(&entry_bb);
     let arg0 = function.get_first_param().unwrap().into_int_value();
     let arg1 = function.get_nth_param(1).unwrap().into_int_value();
-    let cond = emitter.builder.build_int_compare(operator, arg0, arg1, "");
+    let cond = emitter
+        .builder
+        .build_int_compare(operator, arg0, arg1, "comp");
     emitter
         .builder
         .build_conditional_branch(cond, &cont_bb, &then_bb);
@@ -53,7 +55,7 @@ fn emit_comp_int(emitter: &mut Emitter, function_name: &str, operator: IntPredic
     emitter.builder.build_unconditional_branch(&cont_bb);
 
     emitter.builder.position_at_end(&cont_bb);
-    let phi = emitter.builder.build_phi(i32_type, "");
+    let phi = emitter.builder.build_phi(i32_type, "compphi");
     let entry_val = i32_type.const_int(1, false);
     let then_val = i32_type.const_int(0, false);
     phi.add_incoming(&[(&then_val, &then_bb), (&entry_val, &entry_bb)]);
@@ -93,7 +95,7 @@ fn emit_and_int(emitter: &mut Emitter) {
     emitter.builder.build_unconditional_branch(&cont_bb);
 
     emitter.builder.position_at_end(&cont_bb);
-    let phi = emitter.builder.build_phi(i32_type, "");
+    let phi = emitter.builder.build_phi(i32_type, "andphi");
     let entry_val = i32_type.const_int(0, false);
     let then_val = i32_type.const_int(1, false);
     phi.add_incoming(&[(&then_val, &then_bb), (&entry_val, &entry_bb)]);
@@ -133,7 +135,7 @@ fn emit_or_int(emitter: &mut Emitter) {
     emitter.builder.build_unconditional_branch(&cont_bb);
 
     emitter.builder.position_at_end(&cont_bb);
-    let phi = emitter.builder.build_phi(i32_type, "");
+    let phi = emitter.builder.build_phi(i32_type, "orphi");
     let entry_val = i32_type.const_int(0, false);
     let then_val = i32_type.const_int(1, false);
     phi.add_incoming(&[(&then_val, &then_bb), (&entry_val, &entry_bb)]);

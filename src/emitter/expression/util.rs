@@ -30,7 +30,7 @@ pub fn emit_expression_as_pointer(
                 emitter.builder.build_gep(
                     array_alloca,
                     &[emitter.context.i32_type().const_int(0, false), index],
-                    "",
+                    "gep",
                 )
             };
             (alloca, BasicType::Int, identifier)
@@ -117,7 +117,9 @@ pub fn emit_compare_expression(
         None => panic!(format!("call of undeclared function {}", operator)),
     };
     let arguments: Vec<BasicValueEnum> = vec![lhs, rhs];
-    let func_call_site = emitter.builder.build_call(fn_value, &arguments, "");
+    let func_call_site = emitter
+        .builder
+        .build_call(fn_value, &arguments, "callcompare");
     let val = func_call_site
         .try_as_basic_value()
         .left()

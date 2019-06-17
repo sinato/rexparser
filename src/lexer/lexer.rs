@@ -56,7 +56,7 @@ impl Lexer {
             ("PREFIXOP", r"((\s|^)\+\+)|&"),
             ("SUFFIXOP", r"(\+\+|\[|\()"),
             ("OP", r"((\|\|)|(\+=)|(==)|>|<|\+|-|\*|=|,)"),
-            ("CHAR", r"'[A-Za-z_0-9]'"),
+            ("CHAR", r"'[A-Za-z_0-9.]'"),
             ("IDE", r"[A-Za-z_][A-Za-z_0-9]*"),
         ];
         let re = make_regex(&token_patterns);

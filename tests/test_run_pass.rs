@@ -20,11 +20,8 @@ fn run(filepath: &str, stdout: &str, status: &str) {
     assert!(output.status.to_string() == String::from(format!("exit code: {}", status)));
 
     // assert stdout
-    println!(
-        "{:?} => {:?}",
-        std::str::from_utf8(&output.stdout).unwrap(),
-        stdout
-    );
+    let stdout_string = std::str::from_utf8(&output.stdout).unwrap();
+    println!("{} => {}", stdout_string, stdout);
     assert!(std::str::from_utf8(&output.stdout).unwrap() == stdout);
 }
 
