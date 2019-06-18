@@ -1,8 +1,34 @@
+use crate::lexer::token::Property;
 use crate::lexer::token::{Associativity, Token, Tokens};
+
+use std::collections::HashMap;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct ExpressionNodes {
     pub nodes: Vec<ExpressionNode>,
+}
+
+pub fn get_property(op: &String) -> Property {
+    let mut map = HashMap::new();
+    map.insert("=", (2, Associativity::Right));
+    map.insert("+=", (2, Associativity::Right));
+    map.insert("||", (4, Associativity::Left));
+    map.insert("&&", (5, Associativity::Left));
+    map.insert("==", (9, Associativity::Left));
+    map.insert(">", (10, Associativity::Left));
+    map.insert("<", (10, Associativity::Left));
+    map.insert("+", (12, Associativity::Left));
+    map.insert("-", (12, Associativity::Left));
+    map.insert("*", (13, Associativity::Left));
+    map.insert("[", (16, Associativity::Left));
+    map.insert("(", (16, Associativity::Left));
+    map.insert(",", (1, Associativity::Left));
+    let op: &str = &op;
+    let (precedence, associativity): (u32, Associativity) = map[op].clone();
+    Property {
+        precedence,
+        associativity,
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -28,23 +54,25 @@ impl ExpressionNode {
     fn new_with_prefix(tokens: &mut Tokens) -> ExpressionNode {
         match tokens.peek() {
             Some(token) => match token {
-                Token::Ide(_) | Token::IntNum(_) | Token::FloatNum(_) => TokenNode::new(tokens),
-                Token::PrefixOp(_) => PrefixNode::new(tokens),
-                Token::Op(op, _property) => match op.as_ref() {
+                Token::Ide(_, _) | Token::IntNum(_, _) | Token::FloatNum(_, _) => {
+                    TokenNode::new(tokens)
+                }
+                Token::PrefixOp(_, _) => PrefixNode::new(tokens),
+                Token::Op(op, debug_info) => match op.as_ref() {
                     // treat as an operator
                     "+" | "-" | "*" => {
                         tokens.pop(); // consume "+" | "-"
                         let node = ExpressionNode::new_node(tokens);
                         ExpressionNode::Prefix(PrefixNode {
                             prefix: TokenNode {
-                                token: Token::PrefixOp(op),
+                                token: Token::PrefixOp(op, debug_info),
                             },
                             node: Box::new(node),
                         })
                     }
                     _ => panic!(),
                 },
-                Token::SuffixOp(suffix) => match suffix.as_ref() {
+                Token::SuffixOp(suffix, _) => match suffix.as_ref() {
                     // treat as a parenthesis expression
                     "(" => {
                         tokens.pop(); // consume "("
@@ -62,14 +90,14 @@ impl ExpressionNode {
     fn new_with_suffix(lhs: ExpressionNode, tokens: &mut Tokens) -> ExpressionNode {
         match tokens.peek() {
             Some(token) => match token {
-                Token::SuffixOp(_) => {
+                Token::SuffixOp(_, _) => {
                     let mut node = SuffixNode::new(lhs, tokens);
-                    while let Some(Token::SuffixOp(_)) = tokens.peek() {
+                    while let Some(Token::SuffixOp(_, _)) = tokens.peek() {
                         node = SuffixNode::new(node, tokens);
                     }
                     node
                 }
-                Token::Question => TernaryExpNode::new(lhs, tokens),
+                Token::Question(_) => TernaryExpNode::new(lhs, tokens),
                 _ => lhs,
             },
             None => lhs,
@@ -95,7 +123,8 @@ impl BinExpNode {
     ) -> ExpressionNode {
         while let Some(token) = tokens.peek() {
             match token {
-                Token::Op(op, property) => {
+                Token::Op(op, debug_info) => {
+                    let property = get_property(&op);
                     let (root_precedence, root_associativity) =
                         (property.clone().precedence, property.clone().associativity);
                     if root_precedence < min_precedence {
@@ -103,11 +132,12 @@ impl BinExpNode {
                     }
                     tokens.pop(); // consume op
                     let op = TokenNode {
-                        token: Token::Op(op, property),
+                        token: Token::Op(op, debug_info),
                     };
                     // TODO: impl error handling
                     let mut rhs = ExpressionNode::new_node(tokens);
-                    while let Some(Token::Op(_, property2)) = tokens.peek() {
+                    while let Some(Token::Op(op2, _)) = tokens.peek() {
+                        let property2 = get_property(&op2);
                         let (precedence, _associativity) =
                             (property2.precedence, property2.associativity);
                         match root_associativity {
@@ -194,10 +224,10 @@ pub struct SuffixNode {
 impl SuffixNode {
     fn new(lhs: ExpressionNode, tokens: &mut Tokens) -> ExpressionNode {
         match tokens.pop().unwrap() {
-            Token::SuffixOp(suffix) => match suffix.as_ref() {
+            Token::SuffixOp(suffix, debug_info) => match suffix.as_ref() {
                 "++" => ExpressionNode::Suffix(SuffixNode {
                     suffix: TokenNode {
-                        token: Token::SuffixOp(suffix),
+                        token: Token::SuffixOp(suffix, debug_info),
                     },
                     node: Box::new(lhs),
                 }),
@@ -214,7 +244,7 @@ impl SuffixNode {
                     if let ExpressionNode::Token(token_node) = lhs {
                         let parameters = match tokens.peek() {
                             Some(token) => match token {
-                                Token::ParenE => Box::new(ExpressionNode::Empty),
+                                Token::ParenE(_) => Box::new(ExpressionNode::Empty),
                                 _ => Box::new(BinExpNode::new(tokens)),
                             },
                             None => panic!(),

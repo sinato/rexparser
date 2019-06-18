@@ -1,34 +1,10 @@
-use crate::lexer::token::{Associativity, BasicType, Property, Token, Tokens};
+use crate::lexer::token::{BasicType, DebugInfo, Token, Tokens};
 use log::debug;
 use regex::Regex;
-use std::collections::HashMap;
 
 pub struct Lexer {
     re: Regex,
     names: Vec<&'static str>,
-}
-
-pub fn get_property(op: &String) -> Property {
-    let mut map = HashMap::new();
-    map.insert("=", (2, Associativity::Right));
-    map.insert("+=", (2, Associativity::Right));
-    map.insert("||", (4, Associativity::Left));
-    map.insert("&&", (5, Associativity::Left));
-    map.insert("==", (9, Associativity::Left));
-    map.insert(">", (10, Associativity::Left));
-    map.insert("<", (10, Associativity::Left));
-    map.insert("+", (12, Associativity::Left));
-    map.insert("-", (12, Associativity::Left));
-    map.insert("*", (13, Associativity::Left));
-    map.insert("[", (16, Associativity::Left));
-    map.insert("(", (16, Associativity::Left));
-    map.insert(",", (1, Associativity::Left));
-    let op: &str = &op;
-    let (precedence, associativity): (u32, Associativity) = map[op].clone();
-    Property {
-        precedence,
-        associativity,
-    }
 }
 
 impl Lexer {
@@ -65,12 +41,24 @@ impl Lexer {
         Lexer { re, names }
     }
     pub fn lex(&self, code: String) -> Tokens {
-        let tokens = self.tokenize(code);
+        let mut code = code;
+        let tokens = self.tokenize(&mut code);
         tokens
     }
-    fn tokenize(&self, code: String) -> Tokens {
+    fn tokenize(&self, code: &mut String) -> Tokens {
         let mut tokens: Vec<Token> = Vec::new();
-        for caps in self.re.captures_iter(&code) {
+
+        // get token's location
+        let mut locations: Vec<DebugInfo> = Vec::new();
+        for mat in self.re.find_iter(&code) {
+            let location = DebugInfo {
+                start: mat.start(),
+                end: mat.end(),
+                s: mat.as_str().to_string(),
+            };
+            locations.push(location);
+        }
+        for (i, caps) in self.re.captures_iter(&code).enumerate() {
             let mut typ = String::from("nil");
             let val = String::from(&caps[0]);
             for name in &self.names {
@@ -78,50 +66,51 @@ impl Lexer {
                     typ = name.to_string();
                 }
             }
+            let debug_info = locations.clone().remove(i);
             match typ.as_ref() {
-                "COLON" => tokens.push(Token::Colon),
-                "QUESTION" => tokens.push(Token::Question),
-                "FLOAT_NUM" => tokens.push(Token::FloatNum(val)),
-                "INT_NUM" => tokens.push(Token::IntNum(val)),
-                "SEMI" => tokens.push(Token::Semi),
+                "COLON" => tokens.push(Token::Colon(debug_info)),
+                "QUESTION" => tokens.push(Token::Question(debug_info)),
+                "FLOAT_NUM" => tokens.push(Token::FloatNum(val, debug_info)),
+                "INT_NUM" => tokens.push(Token::IntNum(val, debug_info)),
+                "SEMI" => tokens.push(Token::Semi(debug_info)),
                 "TYPE" => match val.as_ref() {
-                    "int" => tokens.push(Token::Type(BasicType::Int)),
-                    "float" => tokens.push(Token::Type(BasicType::Float)),
-                    "char" => tokens.push(Token::Type(BasicType::Int)),
+                    "int" => tokens.push(Token::Type(BasicType::Int, debug_info)),
+                    "float" => tokens.push(Token::Type(BasicType::Float, debug_info)),
+                    "char" => tokens.push(Token::Type(BasicType::Int, debug_info)),
                     _ => panic!("Unimplemented type."),
                 },
-                "RETURN" => tokens.push(Token::Return),
-                "IF" => tokens.push(Token::If),
-                "ELSE" => tokens.push(Token::Else),
-                "WHILE" => tokens.push(Token::While),
-                "BREAK" => tokens.push(Token::Break),
-                "CONTINUE" => tokens.push(Token::Continue),
-                "FOR" => tokens.push(Token::For),
-                "SQUARE_E" => tokens.push(Token::SquareE),
-                "PAREN_E" => tokens.push(Token::ParenE),
-                "CURLY_S" => tokens.push(Token::CurlyS),
-                "CURLY_E" => tokens.push(Token::CurlyE),
+                "RETURN" => tokens.push(Token::Return(debug_info)),
+                "IF" => tokens.push(Token::If(debug_info)),
+                "ELSE" => tokens.push(Token::Else(debug_info)),
+                "WHILE" => tokens.push(Token::While(debug_info)),
+                "BREAK" => tokens.push(Token::Break(debug_info)),
+                "CONTINUE" => tokens.push(Token::Continue(debug_info)),
+                "FOR" => tokens.push(Token::For(debug_info)),
+                "SQUARE_E" => tokens.push(Token::SquareE(debug_info)),
+                "PAREN_E" => tokens.push(Token::ParenE(debug_info)),
+                "CURLY_S" => tokens.push(Token::CurlyS(debug_info)),
+                "CURLY_E" => tokens.push(Token::CurlyE(debug_info)),
                 "ANDOP" => {
                     let val = val.trim_end().to_string();
-                    tokens.push(Token::Op(val.clone(), get_property(&val)))
+                    tokens.push(Token::Op(val.clone(), debug_info))
                 }
                 "PREFIXOP" => {
                     let val = val.trim_start().to_string();
-                    tokens.push(Token::PrefixOp(val));
+                    tokens.push(Token::PrefixOp(val, debug_info));
                 }
                 "SUFFIXOP" => {
                     let val = val.trim_end().to_string();
-                    tokens.push(Token::SuffixOp(val));
+                    tokens.push(Token::SuffixOp(val, debug_info));
                 }
                 "OP" => {
                     let val = val.trim_end().to_string();
-                    tokens.push(Token::Op(val.clone(), get_property(&val)))
+                    tokens.push(Token::Op(val.clone(), debug_info))
                 }
-                "IDE" => tokens.push(Token::Ide(val)),
+                "IDE" => tokens.push(Token::Ide(val, debug_info)),
                 "CHAR" => {
                     let chars: Vec<&str> = val.split("'").collect();
                     let num: i32 = chars[1].chars().into_iter().nth(0).unwrap() as i32;
-                    tokens.push(Token::IntNum(num.to_string()))
+                    tokens.push(Token::IntNum(num.to_string(), debug_info))
                 }
                 _ => panic!("This is not an expected panic"),
             }

@@ -11,7 +11,7 @@ pub fn emit_expression_as_pointer(
 ) -> (PointerValue, BasicType, String) {
     match node {
         ExpressionNode::Token(node) => match node.token {
-            Token::Ide(identifier) => match emitter.environment.get(&identifier) {
+            Token::Ide(identifier, _) => match emitter.environment.get(&identifier) {
                 Some((alloca, variable_type)) => (alloca, variable_type, identifier),
                 None => panic!(format!("use of undeclared identifier {}", identifier)),
             },

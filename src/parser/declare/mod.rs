@@ -1,7 +1,5 @@
 use std::collections::VecDeque;
 
-pub mod parser;
-
 use crate::lexer::token::*;
 use crate::parser::expression::node::*;
 use crate::parser::statement::StatementNode;
@@ -26,18 +24,18 @@ pub struct FunctionNode {
 impl FunctionNode {
     pub fn new(tokens: &mut Tokens) -> FunctionNode {
         let return_type = match tokens.pop().unwrap() {
-            Token::Type(val) => val,
+            Token::Type(val, _) => val,
             _ => panic!(),
         };
         let identifier = match tokens.pop().unwrap() {
-            Token::Ide(val) => val,
+            Token::Ide(val, _) => val,
             _ => panic!(),
         }; // consume main
         tokens.pop(); // consume (
 
         let mut parameters: VecDeque<DeclareVariableNode> = VecDeque::new();
         loop {
-            if let Some(Token::ParenE) = tokens.peek() {
+            if let Some(Token::ParenE(_)) = tokens.peek() {
                 tokens.pop(); // consume )
                 break;
             }
@@ -53,7 +51,7 @@ impl FunctionNode {
 
         let mut statements: VecDeque<StatementNode> = VecDeque::new();
         loop {
-            if let Some(Token::CurlyE) = tokens.peek() {
+            if let Some(Token::CurlyE(_)) = tokens.peek() {
                 tokens.pop(); // consume }
                 break;
             }
@@ -79,7 +77,7 @@ pub struct DeclareVariableNode {
 impl DeclareVariableNode {
     pub fn new(tokens: &mut Tokens) -> DeclareVariableNode {
         let mut value_type = match tokens.pop().unwrap() {
-            Token::Type(val) => val,
+            Token::Type(val, _) => val,
             _ => panic!(),
         };
         if let Some(Token::Op(op, _)) = tokens.peek() {
@@ -89,16 +87,16 @@ impl DeclareVariableNode {
             }
         }
         let identifier = match tokens.pop().unwrap() {
-            Token::Ide(val) => val,
+            Token::Ide(val, _) => val,
             _ => panic!(),
         };
 
         let mut array_size_vec: Vec<u32> = Vec::new();
-        while let Some(Token::SuffixOp(op)) = tokens.peek() {
+        while let Some(Token::SuffixOp(op, _)) = tokens.peek() {
             if op == "[" {
                 tokens.pop(); // consume [
                 let num = match tokens.pop().unwrap() {
-                    Token::IntNum(num) => num.parse().unwrap(),
+                    Token::IntNum(num, _) => num.parse().unwrap(),
                     _ => panic!(),
                 };
                 array_size_vec.push(num);

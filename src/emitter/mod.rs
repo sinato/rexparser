@@ -286,7 +286,6 @@ fn get_nested_type(emitter: &mut Emitter, value_type: BasicType) -> BasicTypeEnu
             };
             BasicTypeEnum::ArrayType(array_type)
         }
-        _ => panic!(),
     }
 }
 

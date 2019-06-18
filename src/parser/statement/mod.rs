@@ -19,14 +19,14 @@ pub enum StatementNode {
 impl StatementNode {
     pub fn new(tokens: &mut Tokens) -> StatementNode {
         match tokens.peek().unwrap() {
-            Token::Type(_) => StatementNode::Declare(DeclareStatementNode::new(tokens)),
-            Token::Return => StatementNode::Return(ReturnStatementNode::new(tokens)),
-            Token::CurlyS => StatementNode::Compound(CompoundStatementNode::new(tokens)),
-            Token::If => StatementNode::If(IfStatementNode::new(tokens)),
-            Token::While => StatementNode::While(WhileStatementNode::new(tokens)),
-            Token::Break => StatementNode::Break(BreakStatementNode::new(tokens)),
-            Token::Continue => StatementNode::Continue(ContinueStatementNode::new(tokens)),
-            Token::For => StatementNode::For(ForStatementNode::new(tokens)),
+            Token::Type(_, _) => StatementNode::Declare(DeclareStatementNode::new(tokens)),
+            Token::Return(_) => StatementNode::Return(ReturnStatementNode::new(tokens)),
+            Token::CurlyS(_) => StatementNode::Compound(CompoundStatementNode::new(tokens)),
+            Token::If(_) => StatementNode::If(IfStatementNode::new(tokens)),
+            Token::While(_) => StatementNode::While(WhileStatementNode::new(tokens)),
+            Token::Break(_) => StatementNode::Break(BreakStatementNode::new(tokens)),
+            Token::Continue(_) => StatementNode::Continue(ContinueStatementNode::new(tokens)),
+            Token::For(_) => StatementNode::For(ForStatementNode::new(tokens)),
             _ => StatementNode::Expression(ExpressionStatementNode::new(tokens)),
         }
     }
@@ -41,7 +41,7 @@ impl CompoundStatementNode {
         tokens.pop(); // consume {
         let mut statements: VecDeque<StatementNode> = VecDeque::new();
         loop {
-            if let Some(Token::CurlyE) = tokens.peek() {
+            if let Some(Token::CurlyE(_)) = tokens.peek() {
                 tokens.pop();
                 break;
             }
@@ -60,7 +60,7 @@ impl ExpressionStatementNode {
     pub fn new(tokens: &mut Tokens) -> ExpressionStatementNode {
         let expression = ExpressionNode::new(tokens);
         match tokens.pop().unwrap() {
-            Token::Semi => (),
+            Token::Semi(_) => (),
             _ => panic!(),
         };
         ExpressionStatementNode { expression }
@@ -76,7 +76,7 @@ impl ReturnStatementNode {
         tokens.pop(); // consume return
         let expression = ExpressionNode::new(tokens);
         match tokens.pop().unwrap() {
-            Token::Semi => (),
+            Token::Semi(_) => (),
             _ => panic!(),
         };
         ReturnStatementNode { expression }
@@ -91,7 +91,7 @@ impl DeclareStatementNode {
     pub fn new(tokens: &mut Tokens) -> DeclareStatementNode {
         let declare_variable_node = DeclareVariableNode::new(tokens);
         match tokens.pop().unwrap() {
-            Token::Semi => (),
+            Token::Semi(_) => (),
             _ => panic!(),
         };
         DeclareStatementNode {
@@ -115,7 +115,7 @@ impl IfStatementNode {
         let block = Box::new(StatementNode::new(tokens));
         let else_block = match tokens.peek() {
             Some(token) => match token {
-                Token::Else => {
+                Token::Else(_) => {
                     tokens.pop(); // consume else
                     Some(Box::new(StatementNode::new(tokens)))
                 }

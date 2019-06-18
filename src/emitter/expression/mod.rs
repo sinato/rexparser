@@ -20,8 +20,8 @@ pub fn emit_expression(emitter: &mut Emitter, node: ExpressionNode) -> Value {
 }
 
 fn emit_bin_exp(emitter: &mut Emitter, node: BinExpNode) -> Value {
-    let operator = match node.op.token {
-        Token::Op(op, _) => op,
+    let (operator, debug_info) = match node.op.token {
+        Token::Op(op, debug_info) => (op, debug_info),
         _ => panic!(),
     };
     match operator.as_ref() {
@@ -77,7 +77,7 @@ fn emit_bin_exp(emitter: &mut Emitter, node: BinExpNode) -> Value {
                             "||" => {
                                 emit_compare_expression(emitter, "or_int", lhs.into(), rhs.into())
                             }
-                            _ => panic!(format!("unimpelemented operator {}", operator)),
+                            _ => panic!(format!("unimpelemented operator: {:?}", debug_info)),
                         };
                         Value::Int(val)
                     }
@@ -112,7 +112,7 @@ fn emit_bin_exp(emitter: &mut Emitter, node: BinExpNode) -> Value {
                     }
                     _ => panic!("TODO"),
                 },
-                Value::Array(array_value, array_alloca, val_type, _size) => match rhs {
+                Value::Array(_, array_alloca, val_type, _size) => match rhs {
                     Value::Int(rhs) => match val_type {
                         BasicType::Int => {
                             let alloca = match operator.as_ref() {
@@ -139,17 +139,17 @@ fn emit_bin_exp(emitter: &mut Emitter, node: BinExpNode) -> Value {
 
 fn emit_token(emitter: &mut Emitter, node: TokenNode) -> Value {
     match node.token {
-        Token::IntNum(val) => {
+        Token::IntNum(val, _) => {
             let val: u64 = val.parse().unwrap();
             let val = emitter.context.i32_type().const_int(val, false);
             Value::Int(val)
         }
-        Token::FloatNum(val) => {
+        Token::FloatNum(val, _) => {
             let val: f64 = val.parse().unwrap();
             let val = emitter.context.f32_type().const_float(val);
             Value::Float(val)
         }
-        Token::Ide(val) => {
+        Token::Ide(val, _) => {
             let identifier = val;
             match emitter.environment.get(&identifier) {
                 Some((alloca, variable_type)) => match variable_type {
@@ -181,7 +181,6 @@ fn emit_token(emitter: &mut Emitter, node: TokenNode) -> Value {
                             .into_array_value();
                         Value::Array(val, alloca, *val_type, size)
                     }
-                    _ => panic!(),
                 },
                 None => panic!(format!("use of undeclared identifier {}", identifier)),
             }
@@ -194,7 +193,7 @@ fn emit_prefix(emitter: &mut Emitter, node: PrefixNode) -> Value {
     let prefix = node.prefix;
     let expression = *node.node;
     match prefix.token {
-        Token::PrefixOp(op) => match op.as_ref() {
+        Token::PrefixOp(op, _) => match op.as_ref() {
             "&" => {
                 let val = emit_expression(emitter, expression);
                 match val {
@@ -248,7 +247,7 @@ fn emit_suffix(emitter: &mut Emitter, node: SuffixNode) -> Value {
     let expression = *node.node;
     let (alloca, val_type, identifier) = emit_expression_as_pointer(emitter, expression);
     match suffix.token {
-        Token::SuffixOp(op) => match op.as_ref() {
+        Token::SuffixOp(op, _) => match op.as_ref() {
             "++" => match val_type {
                 BasicType::Int => {
                     let val = emitter
@@ -281,7 +280,7 @@ fn emit_array_index(emitter: &mut Emitter, node: ArrayIndexNode) -> Value {
 
 fn emit_function_call(emitter: &mut Emitter, node: FunctionCallNode) -> Value {
     let identifier = match node.identifier.token {
-        Token::Ide(identifier) => identifier,
+        Token::Ide(identifier, _) => identifier,
         _ => panic!(),
     };
     let fn_value = match emitter.module.get_function(&identifier) {
