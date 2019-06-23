@@ -296,6 +296,12 @@ fn test_sub() {
 }
 
 #[test]
+fn test_global_variable() {
+    let filepath = "./tests/resources/test_global_variable.c";
+    run(filepath, "", "27");
+}
+
+#[test]
 fn test_comp_int() {
     let filepath = "./tests/resources/builtin/test_comp_int.c";
     run(filepath, "", "101");

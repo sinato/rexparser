@@ -2,15 +2,25 @@ use std::collections::VecDeque;
 
 use crate::lexer::token::*;
 use crate::parser::expression::node::*;
-use crate::parser::statement::StatementNode;
+use crate::parser::statement::*;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum DeclareNode {
     Function(FunctionNode),
+    Variable(DeclareStatementNode),
 }
 impl DeclareNode {
     pub fn new(tokens: &mut Tokens) -> DeclareNode {
-        DeclareNode::Function(FunctionNode::new(tokens))
+        let mut cloned_token = tokens.clone();
+        cloned_token.pop(); // consume type token
+        cloned_token.pop(); // consume identifier
+        match cloned_token.pop() {
+            Some(token) => match token {
+                Token::SuffixOp(_, _) => DeclareNode::Function(FunctionNode::new(tokens)),
+                _ => DeclareNode::Variable(DeclareStatementNode::new(tokens)),
+            },
+            None => panic!(),
+        }
     }
 }
 

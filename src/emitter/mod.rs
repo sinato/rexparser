@@ -16,7 +16,7 @@ use crate::emitter::environment::Environment;
 use crate::emitter::expression::util::*;
 use crate::emitter::expression::*;
 use crate::lexer::token::*;
-use crate::parser::declare::DeclareNode;
+use crate::parser::declare::*;
 use crate::parser::statement::*;
 use crate::parser::ProgramNode;
 
@@ -102,15 +102,17 @@ fn emit_program(emitter: &mut Emitter, node: ProgramNode) {
     let fn_type = i32_type.fn_type(&[i32_type.into()], false);
     emitter.module.add_function("putchar", fn_type, None);
 
+    emitter.environment.push_scope();
     let mut declares = node.declares;
     while let Some(declare) = declares.pop_front() {
-        emit_function(emitter, declare)
+        match declare {
+            DeclareNode::Function(node) => emit_function(emitter, node),
+            DeclareNode::Variable(node) => emit_declare_statement_global(emitter, node),
+        };
     }
+    emitter.environment.pop_scope();
 }
-fn emit_function(emitter: &mut Emitter, node: DeclareNode) {
-    let function_node = match node {
-        DeclareNode::Function(node) => node,
-    };
+fn emit_function(emitter: &mut Emitter, function_node: FunctionNode) -> Control {
     let identifier = function_node.identifier;
     let mut statement_nodes = function_node.statements;
 
@@ -172,6 +174,7 @@ fn emit_function(emitter: &mut Emitter, node: DeclareNode) {
         emit_statement(emitter, statement_node, next_blocks.clone());
     }
     emitter.environment.pop_scope();
+    Control::Continue
 }
 
 fn emit_statement(emitter: &mut Emitter, node: StatementNode, next_block: NextBlocks) -> Control {
@@ -235,6 +238,27 @@ fn emit_return_statement(emitter: &mut Emitter, node: ReturnStatementNode) -> Co
         _ => panic!(),
     }
     Control::Break
+}
+
+fn emit_declare_statement_global(emitter: &mut Emitter, node: DeclareStatementNode) -> Control {
+    let node = node.declare_variable_node;
+    let identifier = node.identifier;
+    let value_type = node.value_type.clone();
+
+    let value_type = get_nested_type(emitter, value_type);
+    let global = emitter.module.add_global(value_type, None, &identifier);
+
+    let initialize_exp = node.initialize_expression;
+    if let Some(node) = initialize_exp {
+        match emit_expression(emitter, node) {
+            Value::Int(val) => global.set_initializer(&val),
+            _ => panic!("TODO"),
+        }
+    }
+    emitter
+        .environment
+        .insert_new(identifier, (global.as_pointer_value(), node.value_type));
+    Control::Continue
 }
 
 fn emit_declare_statement(emitter: &mut Emitter, node: DeclareStatementNode) -> Control {
