@@ -25,15 +25,28 @@ pub fn emit_expression_as_pointer(
                 Value::Int(val) => val,
                 _ => panic!(),
             };
-            let (array_alloca, _, identifier) = emit_expression_as_pointer(emitter, array);
-            let alloca = unsafe {
-                emitter.builder.build_gep(
-                    array_alloca,
-                    &[emitter.context.i32_type().const_int(0, false), index],
-                    "gep",
-                )
-            };
-            (alloca, BasicType::Int, identifier)
+            let (array_alloca, val_type, identifier) = emit_expression_as_pointer(emitter, array);
+            match val_type {
+                BasicType::Pointer(boxed_type) => {
+                    let array_alloca = emitter
+                        .builder
+                        .build_load(array_alloca, "arr_pointer")
+                        .into_pointer_value();
+                    let alloca =
+                        unsafe { emitter.builder.build_gep(array_alloca, &[index], "gep") };
+                    (alloca, *boxed_type, identifier)
+                }
+                BasicType::Array(boxed_type, _) => {
+                    let const_zero = emitter.context.i32_type().const_int(0, false);
+                    let alloca = unsafe {
+                        emitter
+                            .builder
+                            .build_gep(array_alloca, &[const_zero, index], "gep")
+                    };
+                    (alloca, *boxed_type, identifier)
+                }
+                _ => panic!(),
+            }
         }
         _ => panic!(),
     }

@@ -152,6 +152,10 @@ fn emit_function(emitter: &mut Emitter, node: DeclareNode) {
                 let value = basic_value.into_int_value();
                 emitter.builder.build_store(alloca, value);
             }
+            BasicType::Pointer(_) => {
+                let value = basic_value.into_pointer_value();
+                emitter.builder.build_store(alloca, value);
+            }
             BasicType::Array(_, _) => {
                 let value = basic_value.into_array_value();
                 emitter.builder.build_store(alloca, value);

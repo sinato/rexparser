@@ -39,7 +39,7 @@ impl FunctionNode {
                 tokens.pop(); // consume )
                 break;
             }
-            let declare_variable_node = DeclareVariableNode::new(tokens);
+            let declare_variable_node = DeclareVariableNode::new(tokens, true);
             parameters.push_back(declare_variable_node);
             if let Some(Token::Op(op, _)) = tokens.peek() {
                 if op == "," {
@@ -75,7 +75,7 @@ pub struct DeclareVariableNode {
     pub initialize_expression: Option<ExpressionNode>,
 }
 impl DeclareVariableNode {
-    pub fn new(tokens: &mut Tokens) -> DeclareVariableNode {
+    pub fn new(tokens: &mut Tokens, is_function_declare: bool) -> DeclareVariableNode {
         let mut value_type = match tokens.pop().unwrap() {
             Token::Type(val, _) => val,
             _ => panic!(),
@@ -90,23 +90,12 @@ impl DeclareVariableNode {
             Token::Ide(val, _) => val,
             _ => panic!(),
         };
-
-        let mut array_size_vec: Vec<u32> = Vec::new();
-        while let Some(Token::SuffixOp(op, _)) = tokens.peek() {
-            if op == "[" {
-                tokens.pop(); // consume [
-                let num = match tokens.pop().unwrap() {
-                    Token::IntNum(num, _) => num.parse().unwrap(),
-                    _ => panic!(),
-                };
-                array_size_vec.push(num);
-                tokens.pop(); // consume ]
+        if let Some(Token::SuffixOp(_, _)) = tokens.peek() {
+            if is_function_declare {
+                value_type = get_array_type_at_function_declare(value_type, tokens);
             } else {
-                break;
+                value_type = get_array_type(value_type, tokens);
             }
-        }
-        while let Some(size) = array_size_vec.pop() {
-            value_type = BasicType::Array(Box::new(value_type), size);
         }
 
         let mut initialize_expression = None;
@@ -122,4 +111,44 @@ impl DeclareVariableNode {
             initialize_expression,
         }
     }
+}
+
+pub fn get_array_type_at_function_declare(value_type: BasicType, tokens: &mut Tokens) -> BasicType {
+    let mut value_type = value_type;
+    if let Some(Token::SuffixOp(op, _)) = tokens.peek() {
+        if op == "[" {
+            tokens.pop(); // consume [
+            if let Some(Token::SquareE(_)) = tokens.peek() {
+                tokens.pop(); // consume ]
+            } else {
+                tokens.pop();
+                tokens.pop(); // consume ]
+            }
+        }
+    }
+    value_type = get_array_type(value_type, tokens);
+    value_type = BasicType::Pointer(Box::new(value_type));
+    value_type
+}
+
+fn get_array_type(value_type: BasicType, tokens: &mut Tokens) -> BasicType {
+    let mut value_type = value_type;
+    let mut array_size_vec: Vec<u32> = Vec::new();
+    while let Some(Token::SuffixOp(op, _)) = tokens.peek() {
+        if op == "[" {
+            tokens.pop(); // consume [
+            let num = match tokens.pop().unwrap() {
+                Token::IntNum(num, _) => num.parse().unwrap(),
+                _ => panic!(),
+            };
+            array_size_vec.push(num);
+            tokens.pop(); // consume ]
+        } else {
+            break;
+        }
+    }
+    while let Some(size) = array_size_vec.pop() {
+        value_type = BasicType::Array(Box::new(value_type), size);
+    }
+    value_type
 }

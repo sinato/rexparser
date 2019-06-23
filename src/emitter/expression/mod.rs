@@ -293,7 +293,16 @@ fn emit_function_call(emitter: &mut Emitter, node: FunctionCallNode) -> Value {
     for val in vals.into_iter() {
         let argument: BasicValueEnum = match val {
             Value::Int(val) => val.into(),
-            Value::Array(val, _alloca, _, _) => val.into(),
+            Value::Array(_val, alloca, _, _) => {
+                let const_zero = emitter.context.i32_type().const_int(0, false);
+                let val = unsafe {
+                    emitter
+                        .builder
+                        .build_gep(alloca, &[const_zero, const_zero], "arrf")
+                };
+                val.into()
+            }
+            Value::Pointer(val, _) => val.into(),
             _ => panic!("TODO"),
         };
         arguments.push(argument);

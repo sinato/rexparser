@@ -134,8 +134,8 @@ fn test_compound_statement2() {
 }
 
 #[test]
-fn test_function_arr() {
-    let filepath = "./tests/resources/test_function_arr.c";
+fn test_function_arr1() {
+    let filepath = "./tests/resources/test_function_arr1.c";
     run(filepath, "", "35");
 }
 

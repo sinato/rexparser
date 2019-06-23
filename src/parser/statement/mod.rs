@@ -89,7 +89,7 @@ pub struct DeclareStatementNode {
 }
 impl DeclareStatementNode {
     pub fn new(tokens: &mut Tokens) -> DeclareStatementNode {
-        let declare_variable_node = DeclareVariableNode::new(tokens);
+        let declare_variable_node = DeclareVariableNode::new(tokens, false);
         match tokens.pop().unwrap() {
             Token::Semi(_) => (),
             _ => panic!(),

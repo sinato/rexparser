@@ -1,4 +1,4 @@
-int func(int a[3][2], int i, int j) {
+int func(int a[][2], int i, int j) {
     return a[i][j];
 }
 
