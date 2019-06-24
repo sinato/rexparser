@@ -87,6 +87,13 @@ pub struct DeclareVariableNode {
 impl DeclareVariableNode {
     pub fn new(tokens: &mut Tokens, is_function_declare: bool) -> DeclareVariableNode {
         let mut value_type = match tokens.pop().unwrap() {
+            Token::Struct(_) => {
+                let identifier = match tokens.pop().unwrap() {
+                    Token::Ide(val, _) => val,
+                    _ => panic!(),
+                };
+                BasicType::Struct(identifier)
+            }
             Token::Type(val, _) => val,
             _ => panic!(),
         };

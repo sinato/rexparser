@@ -1,6 +1,7 @@
 use crate::lexer::token::*;
 use crate::parser::declare::*;
 use crate::parser::expression::node::ExpressionNode;
+use crate::parser::*;
 
 use std::collections::VecDeque;
 
@@ -9,6 +10,7 @@ pub enum StatementNode {
     Expression(ExpressionStatementNode),
     Return(ReturnStatementNode),
     Declare(DeclareStatementNode),
+    Struct(StructStatementNode),
     Compound(CompoundStatementNode),
     If(IfStatementNode),
     For(ForStatementNode),
@@ -20,6 +22,7 @@ impl StatementNode {
     pub fn new(tokens: &mut Tokens) -> StatementNode {
         match tokens.peek().unwrap() {
             Token::Type(_, _) => StatementNode::Declare(DeclareStatementNode::new(tokens)),
+            Token::Struct(_) => StatementNode::Struct(StructStatementNode::new(tokens)),
             Token::Return(_) => StatementNode::Return(ReturnStatementNode::new(tokens)),
             Token::CurlyS(_) => StatementNode::Compound(CompoundStatementNode::new(tokens)),
             Token::If(_) => StatementNode::If(IfStatementNode::new(tokens)),
@@ -80,6 +83,23 @@ impl ReturnStatementNode {
             _ => panic!(),
         };
         ReturnStatementNode { expression }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum StructStatementNode {
+    Declare(DeclareStatementNode),
+    Definition(StructDefinitionNode),
+}
+impl StructStatementNode {
+    pub fn new(tokens: &mut Tokens) -> StructStatementNode {
+        let mut cloned_tokens = tokens.clone();
+        cloned_tokens.pop(); // consume "struct"
+        cloned_tokens.pop(); // consume identifier
+        match cloned_tokens.pop().unwrap() {
+            Token::CurlyS(_) => StructStatementNode::Definition(StructDefinitionNode::new(tokens)),
+            _ => StructStatementNode::Declare(DeclareStatementNode::new(tokens)),
+        }
     }
 }
 

@@ -48,6 +48,39 @@ pub fn emit_expression_as_pointer(
                 _ => panic!(),
             }
         }
+        ExpressionNode::Access(node) => {
+            let exp: ExpressionNode = *node.node;
+            let access_identifier: Token = node.access_identifier;
+
+            let (struct_alloca, variable_type, identifier) =
+                emit_expression_as_pointer(emitter, exp);
+            match variable_type.clone() {
+                BasicType::Struct(struct_identifier) => {
+                    let target_struct = match emitter.environment.get_struct(&struct_identifier) {
+                        Some(target_struct) => target_struct,
+                        None => panic!("undeclared struct"),
+                    };
+                    let access_identifier = match access_identifier {
+                        Token::Ide(identifier, _) => identifier,
+                        _ => panic!("unexpected"),
+                    };
+                    let (member_idx, member_type) = match target_struct.find(&access_identifier) {
+                        Some((member_idx, member_type)) => (member_idx, member_type),
+                        None => panic!(format!(
+                            "no member named '{}' 'struct {}'",
+                            access_identifier, struct_identifier
+                        )),
+                    };
+                    let alloca = unsafe {
+                        emitter
+                            .builder
+                            .build_struct_gep(struct_alloca, member_idx, "struct_gep")
+                    };
+                    (alloca, member_type, identifier)
+                }
+                _ => panic!(),
+            }
+        }
         _ => panic!(),
     }
 }

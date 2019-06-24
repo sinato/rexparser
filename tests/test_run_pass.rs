@@ -302,6 +302,18 @@ fn test_global_variable() {
 }
 
 #[test]
+fn test_struct1() {
+    let filepath = "./tests/resources/test_struct1.c";
+    run(filepath, "", "33");
+}
+
+#[test]
+fn test_struct2() {
+    let filepath = "./tests/resources/test_struct2.c";
+    run(filepath, "", "55");
+}
+
+#[test]
 fn test_comp_int() {
     let filepath = "./tests/resources/builtin/test_comp_int.c";
     run(filepath, "", "101");

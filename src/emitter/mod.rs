@@ -182,6 +182,7 @@ fn emit_statement(emitter: &mut Emitter, node: StatementNode, next_block: NextBl
         StatementNode::Expression(node) => emit_expression_statement(emitter, node),
         StatementNode::Return(node) => emit_return_statement(emitter, node),
         StatementNode::Declare(node) => emit_declare_statement(emitter, node),
+        StatementNode::Struct(node) => emit_struct_statement(emitter, node),
         StatementNode::Compound(node) => emit_compound_statement(emitter, node, next_block),
         StatementNode::If(node) => emit_if_statement(emitter, node, next_block),
         StatementNode::While(node) => emit_while_statement(emitter, node),
@@ -261,6 +262,39 @@ fn emit_declare_statement_global(emitter: &mut Emitter, node: DeclareStatementNo
     Control::Continue
 }
 
+fn emit_struct_statement(emitter: &mut Emitter, node: StructStatementNode) -> Control {
+    match node {
+        StructStatementNode::Definition(node) => {
+            let struct_declare = node.target_struct;
+            emitter
+                .environment
+                .insert_new_struct(struct_declare.clone().identifier, struct_declare);
+        }
+        StructStatementNode::Declare(node) => {
+            let declare_variable_node = node.declare_variable_node;
+            let identifier = declare_variable_node.identifier;
+            let value_type = declare_variable_node.value_type;
+            let struct_type = match value_type.clone() {
+                BasicType::Struct(identifier) => {
+                    let target_struct = emitter.environment.get_struct(&identifier).unwrap();
+                    let mut members: Vec<BasicTypeEnum> = Vec::new();
+                    for (_identifier, value_type) in target_struct.members {
+                        let value_type = get_nested_type(emitter, value_type);
+                        members.push(value_type);
+                    }
+                    emitter.context.struct_type(&members, false)
+                }
+                _ => panic!("unexpected pattern"),
+            };
+            let alloca = emitter.builder.build_alloca(struct_type, &identifier);
+            emitter
+                .environment
+                .insert_new(identifier, (alloca, value_type));
+        }
+    }
+    Control::Continue
+}
+
 fn emit_declare_statement(emitter: &mut Emitter, node: DeclareStatementNode) -> Control {
     let node = node.declare_variable_node;
     let identifier = node.identifier;
@@ -314,6 +348,7 @@ fn get_nested_type(emitter: &mut Emitter, value_type: BasicType) -> BasicTypeEnu
             };
             BasicTypeEnum::ArrayType(array_type)
         }
+        _ => panic!(),
     }
 }
 

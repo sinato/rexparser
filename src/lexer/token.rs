@@ -16,6 +16,7 @@ pub enum BasicType {
     Float,
     Pointer(Box<BasicType>),
     Array(Box<BasicType>, u32),
+    Struct(String), // struct identifier
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -34,6 +35,7 @@ pub enum Token {
     SuffixOp(String, DebugInfo),
     Ide(String, DebugInfo),
     Type(BasicType, DebugInfo),
+    Struct(DebugInfo),
     Return(DebugInfo),
     If(DebugInfo),
     Else(DebugInfo),
@@ -48,34 +50,6 @@ pub enum Token {
     ParenE(DebugInfo),
     Colon(DebugInfo),
     Question(DebugInfo),
-}
-
-impl std::fmt::Display for Token {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            Token::FloatNum(num, _) => write!(f, "{}", num),
-            Token::IntNum(num, _) => write!(f, "{}", num),
-            Token::Op(op, _) => write!(f, "{}", op),
-            Token::PrefixOp(op, _) => write!(f, "{}", op),
-            Token::SuffixOp(op, _) => write!(f, "{}", op),
-            Token::Ide(ide, _) => write!(f, "{}", ide),
-            Token::Type(val, _) => write!(f, "{:?}", val),
-            Token::Return(_) => write!(f, "return"),
-            Token::If(_) => write!(f, "if"),
-            Token::Else(_) => write!(f, "else"),
-            Token::While(_) => write!(f, "while"),
-            Token::Break(_) => write!(f, "break"),
-            Token::Continue(_) => write!(f, "continue"),
-            Token::For(_) => write!(f, "for"),
-            Token::Semi(_) => write!(f, ";"),
-            Token::CurlyS(_) => write!(f, "{{"),
-            Token::CurlyE(_) => write!(f, "}}"),
-            Token::SquareE(_) => write!(f, "]"),
-            Token::ParenE(_) => write!(f, ")"),
-            Token::Colon(_) => write!(f, ":"),
-            Token::Question(_) => write!(f, "?"),
-        }
-    }
 }
 
 #[derive(Debug, PartialEq, Clone)]

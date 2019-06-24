@@ -15,6 +15,7 @@ pub fn emit_expression(emitter: &mut Emitter, node: ExpressionNode) -> Value {
         ExpressionNode::Suffix(node) => emit_suffix(emitter, node),
         ExpressionNode::ArrayIndex(node) => emit_array_index(emitter, node),
         ExpressionNode::FunctionCall(node) => emit_function_call(emitter, node),
+        ExpressionNode::Access(node) => emit_access(emitter, node),
         _ => panic!(""),
     }
 }
@@ -181,6 +182,7 @@ fn emit_token(emitter: &mut Emitter, node: TokenNode) -> Value {
                             .into_array_value();
                         Value::Array(val, alloca, *val_type, size)
                     }
+                    _ => panic!(),
                 },
                 None => panic!(format!("use of undeclared identifier {}", identifier)),
             }
@@ -314,4 +316,14 @@ fn emit_function_call(emitter: &mut Emitter, node: FunctionCallNode) -> Value {
         .unwrap()
         .into_int_value();
     Value::Int(val)
+}
+
+fn emit_access(emitter: &mut Emitter, node: AccessNode) -> Value {
+    let (alloca, val_type, identifier) =
+        emit_expression_as_pointer(emitter, ExpressionNode::Access(node));
+    let val = emitter.builder.build_load(alloca, &identifier);
+    match val_type {
+        BasicType::Int => Value::Int(val.into_int_value()),
+        _ => panic!("TODO"),
+    }
 }

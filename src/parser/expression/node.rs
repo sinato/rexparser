@@ -22,6 +22,7 @@ pub fn get_property(op: &String) -> Property {
     map.insert("*", (13, Associativity::Left));
     map.insert("[", (16, Associativity::Left));
     map.insert("(", (16, Associativity::Left));
+    map.insert(".", (16, Associativity::Left));
     map.insert(",", (1, Associativity::Left));
     let op: &str = &op;
     let (precedence, associativity): (u32, Associativity) = map[op].clone();
@@ -39,6 +40,7 @@ pub enum ExpressionNode {
     Suffix(SuffixNode),
     ArrayIndex(ArrayIndexNode),
     FunctionCall(FunctionCallNode),
+    Access(AccessNode),
     Token(TokenNode),
     Empty,
 }
@@ -258,11 +260,24 @@ impl SuffixNode {
                         panic!("Expect a token node as lhs.")
                     }
                 }
+                "." => {
+                    let access_identifier = tokens.pop().unwrap();
+                    ExpressionNode::Access(AccessNode {
+                        access_identifier,
+                        node: Box::new(lhs),
+                    })
+                }
                 _ => panic!(),
             },
             _ => panic!("Expect a suffix operator."),
         }
     }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct AccessNode {
+    pub access_identifier: Token,
+    pub node: Box<ExpressionNode>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -273,10 +288,5 @@ impl TokenNode {
     pub fn new(tokens: &mut Tokens) -> ExpressionNode {
         let token = tokens.pop().unwrap();
         ExpressionNode::Token(TokenNode { token })
-    }
-}
-impl std::fmt::Display for TokenNode {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.token)
     }
 }
