@@ -11,6 +11,7 @@ pub enum StatementNode {
     Return(ReturnStatementNode),
     Declare(DeclareStatementNode),
     Struct(StructStatementNode),
+    Enum(EnumStatementNode),
     Compound(CompoundStatementNode),
     If(IfStatementNode),
     For(ForStatementNode),
@@ -23,6 +24,7 @@ impl StatementNode {
         match tokens.peek().unwrap() {
             Token::Type(_, _) => StatementNode::Declare(DeclareStatementNode::new(tokens)),
             Token::Struct(_) => StatementNode::Struct(StructStatementNode::new(tokens)),
+            Token::Enum(_) => StatementNode::Enum(EnumStatementNode::new(tokens)),
             Token::Return(_) => StatementNode::Return(ReturnStatementNode::new(tokens)),
             Token::CurlyS(_) => StatementNode::Compound(CompoundStatementNode::new(tokens)),
             Token::If(_) => StatementNode::If(IfStatementNode::new(tokens)),
@@ -61,7 +63,7 @@ pub struct ExpressionStatementNode {
 }
 impl ExpressionStatementNode {
     pub fn new(tokens: &mut Tokens) -> ExpressionStatementNode {
-        let expression = ExpressionNode::new(tokens);
+        let expression = ExpressionNode::new(tokens, None);
         match tokens.pop().unwrap() {
             Token::Semi(_) => (),
             _ => panic!(),
@@ -77,7 +79,7 @@ pub struct ReturnStatementNode {
 impl ReturnStatementNode {
     pub fn new(tokens: &mut Tokens) -> ReturnStatementNode {
         tokens.pop(); // consume return
-        let expression = ExpressionNode::new(tokens);
+        let expression = ExpressionNode::new(tokens, None);
         match tokens.pop().unwrap() {
             Token::Semi(_) => (),
             _ => panic!(),
@@ -104,12 +106,32 @@ impl StructStatementNode {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+pub enum EnumStatementNode {
+    Declare(DeclareStatementNode),
+    Definition(EnumDefinitionNode),
+}
+impl EnumStatementNode {
+    pub fn new(tokens: &mut Tokens) -> EnumStatementNode {
+        let mut cloned_tokens = tokens.clone();
+        cloned_tokens.pop(); // consume "enum"
+
+        if let Some(Token::Ide(_, _)) = cloned_tokens.peek() {
+            cloned_tokens.pop(); // consume enum tag
+        }
+        match cloned_tokens.pop().unwrap() {
+            Token::CurlyS(_) => EnumStatementNode::Definition(EnumDefinitionNode::new(tokens)),
+            _ => EnumStatementNode::Declare(DeclareStatementNode::new(tokens)),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub struct DeclareStatementNode {
     pub declare_variable_node: DeclareVariableNode,
 }
 impl DeclareStatementNode {
     pub fn new(tokens: &mut Tokens) -> DeclareStatementNode {
-        let declare_variable_node = DeclareVariableNode::new(tokens, false);
+        let declare_variable_node = DeclareVariableNode::new(tokens, false, None);
         match tokens.pop().unwrap() {
             Token::Semi(_) => (),
             _ => panic!(),
@@ -130,7 +152,7 @@ impl IfStatementNode {
     pub fn new(tokens: &mut Tokens) -> IfStatementNode {
         tokens.pop(); // consume if
         tokens.pop(); // consume (
-        let condition_expression = ExpressionNode::new(tokens);
+        let condition_expression = ExpressionNode::new(tokens, None);
         tokens.pop(); // consume )
         let block = Box::new(StatementNode::new(tokens));
         let else_block = match tokens.peek() {
@@ -160,7 +182,7 @@ impl WhileStatementNode {
     pub fn new(tokens: &mut Tokens) -> WhileStatementNode {
         tokens.pop(); // consume while
         tokens.pop(); // consume (
-        let condition_expression = ExpressionNode::new(tokens);
+        let condition_expression = ExpressionNode::new(tokens, None);
         tokens.pop(); // consume )
         let block = Box::new(StatementNode::new(tokens));
         WhileStatementNode {
@@ -202,9 +224,9 @@ impl ForStatementNode {
         tokens.pop(); // consume for
         tokens.pop(); // consume (
         let first_statement = Box::new(StatementNode::new(tokens));
-        let condition_expression = ExpressionNode::new(tokens);
+        let condition_expression = ExpressionNode::new(tokens, None);
         tokens.pop(); // consume ;
-        let loop_expression = ExpressionNode::new(tokens);
+        let loop_expression = ExpressionNode::new(tokens, None);
         tokens.pop(); // consume )
         let block = Box::new(StatementNode::new(tokens));
         ForStatementNode {

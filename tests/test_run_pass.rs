@@ -314,6 +314,12 @@ fn test_struct2() {
 }
 
 #[test]
+fn test_enum() {
+    let filepath = "./tests/resources/test_enum.c";
+    run(filepath, "", "71");
+}
+
+#[test]
 fn test_comp_int() {
     let filepath = "./tests/resources/builtin/test_comp_int.c";
     run(filepath, "", "101");

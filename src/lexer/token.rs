@@ -36,6 +36,7 @@ pub enum Token {
     Ide(String, DebugInfo),
     Type(BasicType, DebugInfo),
     Struct(DebugInfo),
+    Enum(DebugInfo),
     Return(DebugInfo),
     If(DebugInfo),
     Else(DebugInfo),
@@ -66,5 +67,11 @@ impl Tokens {
     pub fn peek(&self) -> Option<Token> {
         let mut tokens = self.clone();
         tokens.pop()
+    }
+    pub fn push(&mut self, token: Token) {
+        self.tokens.push(token);
+    }
+    pub fn reverse(&mut self) {
+        self.tokens.reverse()
     }
 }

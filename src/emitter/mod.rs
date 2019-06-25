@@ -183,6 +183,7 @@ fn emit_statement(emitter: &mut Emitter, node: StatementNode, next_block: NextBl
         StatementNode::Return(node) => emit_return_statement(emitter, node),
         StatementNode::Declare(node) => emit_declare_statement(emitter, node),
         StatementNode::Struct(node) => emit_struct_statement(emitter, node),
+        StatementNode::Enum(node) => emit_enum_statement(emitter, node),
         StatementNode::Compound(node) => emit_compound_statement(emitter, node, next_block),
         StatementNode::If(node) => emit_if_statement(emitter, node, next_block),
         StatementNode::While(node) => emit_while_statement(emitter, node),
@@ -293,6 +294,35 @@ fn emit_struct_statement(emitter: &mut Emitter, node: StructStatementNode) -> Co
         }
     }
     Control::Continue
+}
+
+fn emit_enum_statement(emitter: &mut Emitter, node: EnumStatementNode) -> Control {
+    match node {
+        EnumStatementNode::Definition(node) => {
+            let _tag = node.tag;
+            let enums = node.enums;
+
+            for declare in enums {
+                let alloca = emit_declare_statement_alloca(
+                    emitter,
+                    declare.identifier.clone(),
+                    declare.value_type.clone(),
+                );
+                let initialize_exp = declare.initialize_expression;
+
+                if let Some(node) = initialize_exp {
+                    let val = emit_expression(emitter, node);
+                    emit_equal_expression(emitter, alloca, declare.value_type.clone(), val);
+                }
+                emitter
+                    .environment
+                    .insert_new(declare.identifier, (alloca, declare.value_type));
+            }
+
+            Control::Continue
+        }
+        EnumStatementNode::Declare(node) => emit_declare_statement(emitter, node),
+    }
 }
 
 fn emit_declare_statement(emitter: &mut Emitter, node: DeclareStatementNode) -> Control {

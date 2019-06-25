@@ -49,7 +49,7 @@ impl FunctionNode {
                 tokens.pop(); // consume )
                 break;
             }
-            let declare_variable_node = DeclareVariableNode::new(tokens, true);
+            let declare_variable_node = DeclareVariableNode::new(tokens, true, None);
             parameters.push_back(declare_variable_node);
             if let Some(Token::Op(op, _)) = tokens.peek() {
                 if op == "," {
@@ -85,28 +85,41 @@ pub struct DeclareVariableNode {
     pub initialize_expression: Option<ExpressionNode>,
 }
 impl DeclareVariableNode {
-    pub fn new(tokens: &mut Tokens, is_function_declare: bool) -> DeclareVariableNode {
+    pub fn new(
+        tokens: &mut Tokens,
+        is_function_declare: bool,
+        break_op: Option<String>,
+    ) -> DeclareVariableNode {
         let mut value_type = match tokens.pop().unwrap() {
             Token::Struct(_) => {
                 let identifier = match tokens.pop().unwrap() {
                     Token::Ide(val, _) => val,
-                    _ => panic!(),
+                    _ => panic!("unexpected"),
                 };
                 BasicType::Struct(identifier)
+            }
+            Token::Enum(_) => {
+                if let Some(Token::Ide(_, _)) = tokens.peek() {
+                    tokens.pop();
+                }
+                BasicType::Int
             }
             Token::Type(val, _) => val,
             _ => panic!(),
         };
+
         if let Some(Token::Op(op, _)) = tokens.peek() {
             if op == "*" {
                 value_type = BasicType::Pointer(Box::new(value_type));
                 tokens.pop();
             }
         }
+
         let identifier = match tokens.pop().unwrap() {
             Token::Ide(val, _) => val,
             _ => panic!(),
         };
+
         if let Some(Token::SuffixOp(_, _)) = tokens.peek() {
             if is_function_declare {
                 value_type = get_array_type_at_function_declare(value_type, tokens);
@@ -114,12 +127,11 @@ impl DeclareVariableNode {
                 value_type = get_array_type(value_type, tokens);
             }
         }
-
         let mut initialize_expression = None;
         if let Some(Token::Op(op, _)) = tokens.peek() {
             if op == "=" {
                 tokens.pop();
-                initialize_expression = Some(ExpressionNode::new(tokens));
+                initialize_expression = Some(ExpressionNode::new(tokens, break_op));
             }
         }
         DeclareVariableNode {

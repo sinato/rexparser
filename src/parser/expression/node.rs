@@ -45,8 +45,8 @@ pub enum ExpressionNode {
     Empty,
 }
 impl ExpressionNode {
-    pub fn new(tokens: &mut Tokens) -> ExpressionNode {
-        BinExpNode::new(tokens)
+    pub fn new(tokens: &mut Tokens, break_op: Option<String>) -> ExpressionNode {
+        BinExpNode::new(tokens, break_op)
     }
     pub fn new_node(tokens: &mut Tokens) -> ExpressionNode {
         let lhs = ExpressionNode::new_with_prefix(tokens);
@@ -78,7 +78,7 @@ impl ExpressionNode {
                     // treat as a parenthesis expression
                     "(" => {
                         tokens.pop(); // consume "("
-                        let node = BinExpNode::new(tokens);
+                        let node = BinExpNode::new(tokens, None);
                         tokens.pop(); // consume ")"
                         node
                     }
@@ -114,18 +114,25 @@ pub struct BinExpNode {
     pub rhs: Box<ExpressionNode>,
 }
 impl BinExpNode {
-    pub fn new(tokens: &mut Tokens) -> ExpressionNode {
+    pub fn new(tokens: &mut Tokens, break_op: Option<String>) -> ExpressionNode {
         let lhs = ExpressionNode::new_node(tokens);
-        BinExpNode::binary_expression(lhs, tokens, 0)
+        BinExpNode::binary_expression(lhs, tokens, 0, break_op)
     }
     fn binary_expression(
         mut lhs: ExpressionNode,
         tokens: &mut Tokens,
         min_precedence: u32,
+        break_op: Option<String>,
     ) -> ExpressionNode {
         while let Some(token) = tokens.peek() {
             match token {
                 Token::Op(op, debug_info) => {
+                    if let Some(break_op) = break_op.clone() {
+                        if break_op == op {
+                            break;
+                        }
+                    }
+
                     let property = get_property(&op);
                     let (root_precedence, root_associativity) =
                         (property.clone().precedence, property.clone().associativity);
@@ -154,7 +161,8 @@ impl BinExpNode {
                                 }
                             }
                         }
-                        rhs = BinExpNode::binary_expression(rhs, tokens, precedence)
+                        rhs =
+                            BinExpNode::binary_expression(rhs, tokens, precedence, break_op.clone())
                     }
                     lhs = ExpressionNode::BinExp(BinExpNode {
                         op,
@@ -179,9 +187,9 @@ impl TernaryExpNode {
     pub fn new(lhs: ExpressionNode, tokens: &mut Tokens) -> ExpressionNode {
         let condition = lhs.clone();
         let _question = tokens.pop();
-        let ternary_lhs = BinExpNode::new(tokens);
+        let ternary_lhs = BinExpNode::new(tokens, None);
         let _colon = tokens.pop();
-        let ternary_rhs = BinExpNode::new(tokens);
+        let ternary_rhs = BinExpNode::new(tokens, None);
         ExpressionNode::TernaryExp(TernaryExpNode {
             condition: Box::new(condition),
             lhs: Box::new(ternary_lhs),
@@ -234,7 +242,7 @@ impl SuffixNode {
                     node: Box::new(lhs),
                 }),
                 "[" => {
-                    let index = BinExpNode::new(tokens);
+                    let index = BinExpNode::new(tokens, None);
                     let array = ExpressionNode::ArrayIndex(ArrayIndexNode {
                         array: Box::new(lhs),
                         index: Box::new(index),
@@ -247,7 +255,7 @@ impl SuffixNode {
                         let parameters = match tokens.peek() {
                             Some(token) => match token {
                                 Token::ParenE(_) => Box::new(ExpressionNode::Empty),
-                                _ => Box::new(BinExpNode::new(tokens)),
+                                _ => Box::new(BinExpNode::new(tokens, None)),
                             },
                             None => panic!(),
                         };
