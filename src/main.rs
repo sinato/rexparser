@@ -9,8 +9,12 @@ use emitter::builtin::emit_builtin;
 use emitter::Emitter;
 use lexer::lexer::Lexer;
 use parser::parser;
+use std::io::prelude::*;
 
 fn compiler(code: String) {
+    let mut file = fs::File::create("target.c").unwrap();
+    file.write_all(code.as_bytes()).unwrap();
+
     let lexer = Lexer::new();
     let mut tokens = lexer.lex(code);
     //dbg!(tokens.clone());

@@ -320,6 +320,12 @@ fn test_enum() {
 }
 
 #[test]
+fn test_switch() {
+    let filepath = "./tests/resources/test_switch.c";
+    run(filepath, "", "115");
+}
+
+#[test]
 fn test_comp_int() {
     let filepath = "./tests/resources/builtin/test_comp_int.c";
     run(filepath, "", "101");

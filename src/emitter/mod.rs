@@ -10,6 +10,7 @@ use inkwell::types::BasicTypeEnum;
 use inkwell::values::{ArrayValue, FloatValue, InstructionOpcode, IntValue, PointerValue};
 use inkwell::{AddressSpace, IntPredicate};
 
+use std::collections::VecDeque;
 use std::path;
 
 use crate::emitter::environment::Environment;
@@ -190,6 +191,8 @@ fn emit_statement(emitter: &mut Emitter, node: StatementNode, next_block: NextBl
         StatementNode::Break(node) => emit_break_statement(emitter, node, next_block),
         StatementNode::Continue(node) => emit_continue_statement(emitter, node, next_block),
         StatementNode::For(node) => emit_for_statement(emitter, node),
+        StatementNode::Switch(node) => emit_switch_node(emitter, node),
+        StatementNode::Case(_) | StatementNode::Default(_) => panic!("unexpected"),
     }
 }
 
@@ -577,5 +580,152 @@ fn emit_for_statement(emitter: &mut Emitter, node: ForStatementNode) -> Control 
     emitter.builder.position_at_end(&cont_bb);
 
     emitter.environment.pop_scope();
+    Control::Continue
+}
+
+fn emit_switch_node(emitter: &mut Emitter, node: SwitchStatementNode) -> Control {
+    let condition_expression = node.condition_expression;
+    let statements = node.statements.statements;
+
+    let function = match emitter.module.get_last_function() {
+        Some(func) => func,
+        None => panic!(),
+    };
+
+    // create basic blocks
+    let mut cmp_bbs: VecDeque<BasicBlock> = VecDeque::new();
+    let mut case_bbs: VecDeque<BasicBlock> = VecDeque::new();
+
+    let mut statements_for_bb = statements.clone();
+    let mut need_cmp_bb = true;
+    let entry_bb = function.append_basic_block("entry");
+    while let Some(statement) = statements_for_bb.pop_front() {
+        match statement {
+            StatementNode::Case(_) => {
+                let case_bb = function.append_basic_block("case");
+                if need_cmp_bb {
+                    let cmp_bb = function.append_basic_block("cmp");
+                    cmp_bbs.push_back(cmp_bb);
+                }
+                case_bbs.push_back(case_bb);
+            }
+            StatementNode::Default(_) => {
+                let default_bb = function.append_basic_block("default");
+                case_bbs.push_back(default_bb);
+
+                let cmp_bb = function.append_basic_block("cmp");
+                cmp_bbs.push_back(cmp_bb);
+                need_cmp_bb = false;
+            }
+            _ => panic!("TODO"),
+        }
+    }
+    let cont_bb = function.append_basic_block("cont");
+    let nb = NextBlocks {
+        continue_block: None,
+        break_block: Some(&cont_bb),
+    };
+
+    // Scenario 1: Default statement exists.
+    // entry --> cmp1 ---> cmp2 ---> cmp3        cont
+    //            |         |         |           |
+    //           case1 --> case2 --> default --> case3
+    //
+    // cmp_bbs: [cmp1, cmp2, cmp3]
+    // case_bbs: [case1, case2, default, case3]
+    //
+    // Scenario 2: Default statement does not exist.
+    // entry --> cmp1 ---> cmp2 ---> cmp3 --> cont
+    //            |         |         |         |
+    //           case1 --> case2 --> case3 -----|
+    //
+    // cmp_bbs: [cmp1, cmp2, cmp3]
+    // case_bbs: [case1, case2, case3]
+    //
+    // Scenario 3: Any case / default statement does not exist.
+    // entry --> cont
+    //
+    // cmp_bbs: []
+    // case_bbs: []
+
+    // entry ==============================================================
+    emitter.builder.build_unconditional_branch(&entry_bb);
+    emitter.builder.position_at_end(&entry_bb);
+
+    let first_cmp_bb_ref = if cmp_bbs.len() > 0 {
+        &cmp_bbs[0]
+    } else {
+        &cont_bb
+    };
+    let condition_val = match emit_expression(emitter, condition_expression) {
+        Value::Int(val) => val,
+        _ => panic!("unexpcted(switch statement expects an integer value.)"),
+    };
+    emitter.builder.build_unconditional_branch(first_cmp_bb_ref);
+
+    // cmp
+    let mut statements_for_cmp = statements.clone();
+    let cmp_bbs_len = cmp_bbs.len();
+    for idx in 0..cmp_bbs.len() {
+        let cmp_bb_ref = &cmp_bbs[idx];
+        let next_cmp_bb_ref = if idx + 1 < cmp_bbs_len {
+            &cmp_bbs[idx + 1]
+        } else {
+            &cont_bb
+        };
+        let case_bb_ref = &case_bbs[idx];
+
+        emitter.builder.position_at_end(cmp_bb_ref);
+
+        match statements_for_cmp.pop_front() {
+            Some(statement) => match statement {
+                StatementNode::Case(statement) => {
+                    let case_condition_val =
+                        match emit_expression(emitter, statement.condition_expression) {
+                            Value::Int(val) => val,
+                            _ => panic!("unexpcted(switch statement expects an integer value.)"),
+                        };
+                    let cmp_val = emitter.builder.build_int_compare(
+                        IntPredicate::EQ,
+                        case_condition_val,
+                        condition_val,
+                        "caseeq",
+                    );
+                    emitter
+                        .builder
+                        .build_conditional_branch(cmp_val, case_bb_ref, next_cmp_bb_ref);
+                }
+                StatementNode::Default(_) => {
+                    emitter.builder.build_unconditional_branch(case_bb_ref);
+                }
+                _ => panic!("TODO"),
+            },
+            None => panic!("unexpected"),
+        }
+    }
+
+    // case
+    let statements_size = statements.len();
+    for (idx, statement) in statements.into_iter().enumerate() {
+        emitter.builder.position_at_end(&case_bbs[idx]);
+        let block_statements = match statement {
+            StatementNode::Case(statement) => statement.statements,
+            StatementNode::Default(statement) => statement.statements,
+            _ => panic!(),
+        };
+        let next_bb_ref = match emit_compound_statement(emitter, block_statements, nb.clone()) {
+            Control::Continue => {
+                if idx + 1 < statements_size {
+                    &case_bbs[idx + 1]
+                } else {
+                    &cont_bb
+                }
+            }
+            Control::Break => &cont_bb,
+        };
+        emitter.builder.build_unconditional_branch(next_bb_ref);
+    }
+
+    emitter.builder.position_at_end(&cont_bb);
     Control::Continue
 }

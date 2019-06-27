@@ -16,6 +16,9 @@ pub enum StatementNode {
     If(IfStatementNode),
     For(ForStatementNode),
     While(WhileStatementNode),
+    Switch(SwitchStatementNode),
+    Case(CaseStatementNode),
+    Default(DefaultStatementNode),
     Break(BreakStatementNode),
     Continue(ContinueStatementNode),
 }
@@ -29,6 +32,9 @@ impl StatementNode {
             Token::CurlyS(_) => StatementNode::Compound(CompoundStatementNode::new(tokens)),
             Token::If(_) => StatementNode::If(IfStatementNode::new(tokens)),
             Token::While(_) => StatementNode::While(WhileStatementNode::new(tokens)),
+            Token::Switch(_) => StatementNode::Switch(SwitchStatementNode::new(tokens)),
+            Token::Case(_) => StatementNode::Case(CaseStatementNode::new(tokens)),
+            Token::Default(_) => StatementNode::Default(DefaultStatementNode::new(tokens)),
             Token::Break(_) => StatementNode::Break(BreakStatementNode::new(tokens)),
             Token::Continue(_) => StatementNode::Continue(ContinueStatementNode::new(tokens)),
             Token::For(_) => StatementNode::For(ForStatementNode::new(tokens)),
@@ -64,9 +70,12 @@ pub struct ExpressionStatementNode {
 impl ExpressionStatementNode {
     pub fn new(tokens: &mut Tokens) -> ExpressionStatementNode {
         let expression = ExpressionNode::new(tokens, None);
-        match tokens.pop().unwrap() {
-            Token::Semi(_) => (),
-            _ => panic!(),
+        match tokens.pop() {
+            Some(token) => match token {
+                Token::Semi(_) => (),
+                _ => panic!(token.get_debug_info()),
+            },
+            None => panic!("Expect an expression statement but got EOF"),
         };
         ExpressionStatementNode { expression }
     }
@@ -188,6 +197,82 @@ impl WhileStatementNode {
         WhileStatementNode {
             condition_expression,
             block,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct SwitchStatementNode {
+    pub condition_expression: ExpressionNode,
+    pub statements: CompoundStatementNode,
+}
+impl SwitchStatementNode {
+    pub fn new(tokens: &mut Tokens) -> SwitchStatementNode {
+        tokens.pop(); // consume switch
+        tokens.pop(); // consume (
+        let condition_expression = ExpressionNode::new(tokens, None);
+        tokens.pop(); // consume )
+        let statements = CompoundStatementNode::new(tokens);
+        SwitchStatementNode {
+            condition_expression,
+            statements,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct DefaultStatementNode {
+    pub statements: CompoundStatementNode,
+}
+impl DefaultStatementNode {
+    pub fn new(tokens: &mut Tokens) -> DefaultStatementNode {
+        tokens.pop(); // consume default
+        tokens.pop(); // consume :
+
+        let mut statements: VecDeque<StatementNode> = VecDeque::new();
+        loop {
+            if let Some(token) = tokens.peek() {
+                match token {
+                    Token::Case(_) | Token::Default(_) | Token::CurlyE(_) => break,
+                    _ => {
+                        let statement = StatementNode::new(tokens);
+                        statements.push_back(statement);
+                    }
+                }
+            }
+        }
+        let statements = CompoundStatementNode { statements };
+        DefaultStatementNode { statements }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct CaseStatementNode {
+    pub condition_expression: ExpressionNode,
+    pub statements: CompoundStatementNode,
+}
+impl CaseStatementNode {
+    pub fn new(tokens: &mut Tokens) -> CaseStatementNode {
+        tokens.pop(); // consume case
+        let condition_expression = ExpressionNode::new(tokens, None);
+        tokens.pop(); // consume :
+
+        let mut statements: VecDeque<StatementNode> = VecDeque::new();
+        loop {
+            if let Some(token) = tokens.peek() {
+                match token {
+                    Token::Case(_) | Token::Default(_) | Token::CurlyE(_) => break,
+                    _ => {
+                        let statement = StatementNode::new(tokens);
+                        statements.push_back(statement);
+                    }
+                }
+            }
+        }
+        let statements = CompoundStatementNode { statements };
+        CaseStatementNode {
+            condition_expression,
+            statements,
         }
     }
 }

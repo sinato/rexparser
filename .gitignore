@@ -4,3 +4,4 @@ Cargo.lock
 rusty-tags.vi
 *.bc
 *.ll
+target.*
