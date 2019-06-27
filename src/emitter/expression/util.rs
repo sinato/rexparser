@@ -3,7 +3,7 @@ use inkwell::values::PointerValue;
 use crate::emitter::expression::*;
 use crate::emitter::*;
 use crate::lexer::token::*;
-use crate::parser::expression::node::*;
+use crate::parser::expression::*;
 
 pub fn emit_expression_as_pointer(
     emitter: &mut Emitter,

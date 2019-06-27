@@ -1,6 +1,6 @@
 use crate::lexer::token::*;
 use crate::parser::declare::*;
-use crate::parser::expression::node::ExpressionNode;
+use crate::parser::expression::ExpressionNode;
 use crate::parser::*;
 
 use std::collections::VecDeque;

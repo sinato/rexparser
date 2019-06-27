@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
 use crate::lexer::token::*;
-use crate::parser::expression::node::*;
+use crate::parser::expression::*;
 use crate::parser::statement::*;
 
 #[derive(Debug, PartialEq, Clone)]

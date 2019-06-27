@@ -3,7 +3,7 @@ pub mod util;
 use crate::emitter::expression::util::*;
 use crate::emitter::*;
 use crate::lexer::token::*;
-use crate::parser::expression::node::*;
+use crate::parser::expression::*;
 
 use inkwell::values::{BasicValueEnum, PointerValue};
 

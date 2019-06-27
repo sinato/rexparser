@@ -5,7 +5,7 @@ pub mod statement;
 use crate::emitter::environment::*;
 use crate::lexer::token::*;
 use crate::parser::declare::*;
-use crate::parser::expression::node::*;
+use crate::parser::expression::*;
 use crate::parser::statement::*;
 
 use std::collections::VecDeque;
