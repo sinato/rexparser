@@ -193,6 +193,7 @@ fn emit_statement(emitter: &mut Emitter, node: StatementNode, next_block: NextBl
         StatementNode::For(node) => emit_for_statement(emitter, node),
         StatementNode::Switch(node) => emit_switch_node(emitter, node),
         StatementNode::Case(_) | StatementNode::Default(_) => panic!("unexpected"),
+        StatementNode::Empty => Control::Continue,
     }
 }
 

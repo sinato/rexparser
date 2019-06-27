@@ -21,6 +21,7 @@ pub enum StatementNode {
     Default(DefaultStatementNode),
     Break(BreakStatementNode),
     Continue(ContinueStatementNode),
+    Empty,
 }
 impl StatementNode {
     pub fn new(tokens: &mut Tokens) -> StatementNode {
@@ -38,6 +39,10 @@ impl StatementNode {
             Token::Break(_) => StatementNode::Break(BreakStatementNode::new(tokens)),
             Token::Continue(_) => StatementNode::Continue(ContinueStatementNode::new(tokens)),
             Token::For(_) => StatementNode::For(ForStatementNode::new(tokens)),
+            Token::Semi(_) => {
+                tokens.pop();
+                StatementNode::Empty
+            }
             _ => StatementNode::Expression(ExpressionStatementNode::new(tokens)),
         }
     }
@@ -308,6 +313,7 @@ impl ForStatementNode {
     pub fn new(tokens: &mut Tokens) -> ForStatementNode {
         tokens.pop(); // consume for
         tokens.pop(); // consume (
+
         let first_statement = Box::new(StatementNode::new(tokens));
         let condition_expression = ExpressionNode::new(tokens, None);
         tokens.pop(); // consume ;

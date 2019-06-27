@@ -326,6 +326,12 @@ fn test_switch() {
 }
 
 #[test]
+fn test_empty() {
+    let filepath = "./tests/resources/test_empty.c";
+    run(filepath, "", "45");
+}
+
+#[test]
 fn test_comp_int() {
     let filepath = "./tests/resources/builtin/test_comp_int.c";
     run(filepath, "", "101");
