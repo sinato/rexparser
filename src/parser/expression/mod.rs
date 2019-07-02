@@ -10,6 +10,7 @@ pub struct ExpressionNodes {
 
 pub fn get_property(op: &String) -> Property {
     let mut map = HashMap::new();
+    map.insert(",", (1, Associativity::Left));
     map.insert("=", (2, Associativity::Right));
     map.insert("+=", (2, Associativity::Right));
     map.insert("||", (4, Associativity::Left));
@@ -23,7 +24,6 @@ pub fn get_property(op: &String) -> Property {
     map.insert("[", (16, Associativity::Left));
     map.insert("(", (16, Associativity::Left));
     map.insert(".", (16, Associativity::Left));
-    map.insert(",", (1, Associativity::Left));
     let op: &str = &op;
     let (precedence, associativity): (u32, Associativity) = map[op].clone();
     Property {
@@ -46,7 +46,11 @@ pub enum ExpressionNode {
 }
 impl ExpressionNode {
     pub fn new(tokens: &mut Tokens, break_op: Option<String>) -> ExpressionNode {
-        BinExpNode::new(tokens, break_op)
+        let exp = BinExpNode::new(tokens, break_op);
+        match tokens.peek().unwrap() {
+            Token::Question(_) => TernaryExpNode::new(exp, tokens),
+            _ => exp,
+        }
     }
     pub fn new_node(tokens: &mut Tokens) -> ExpressionNode {
         let lhs = ExpressionNode::new_with_prefix(tokens);
@@ -99,7 +103,6 @@ impl ExpressionNode {
                     }
                     node
                 }
-                Token::Question(_) => TernaryExpNode::new(lhs, tokens),
                 _ => lhs,
             },
             None => lhs,

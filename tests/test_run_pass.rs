@@ -332,6 +332,12 @@ fn test_empty() {
 }
 
 #[test]
+fn test_ternary_exp() {
+    let filepath = "./tests/resources/test_ternary_exp.c";
+    run(filepath, "", "100");
+}
+
+#[test]
 fn test_comp_int() {
     let filepath = "./tests/resources/builtin/test_comp_int.c";
     run(filepath, "", "101");

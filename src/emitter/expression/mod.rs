@@ -16,6 +16,7 @@ pub fn emit_expression(emitter: &mut Emitter, node: ExpressionNode) -> Value {
         ExpressionNode::ArrayIndex(node) => emit_array_index(emitter, node),
         ExpressionNode::FunctionCall(node) => emit_function_call(emitter, node),
         ExpressionNode::Access(node) => emit_access(emitter, node),
+        ExpressionNode::TernaryExp(node) => emit_ternary_exp(emitter, node),
         _ => panic!(""),
     }
 }
@@ -326,4 +327,48 @@ fn emit_access(emitter: &mut Emitter, node: AccessNode) -> Value {
         BasicType::Int => Value::Int(val.into_int_value()),
         _ => panic!("TODO"),
     }
+}
+
+fn emit_ternary_exp(emitter: &mut Emitter, node: TernaryExpNode) -> Value {
+    let i32_type = emitter.context.i32_type();
+    let function = match emitter.module.get_last_function() {
+        Some(func) => func,
+        None => panic!(),
+    };
+    let entry_bb = function.get_last_basic_block().unwrap();
+    let then_bb = function.append_basic_block("ifthen");
+    let cont_bb = function.append_basic_block("ifcont");
+
+    let condition_val = match emit_expression(emitter, *node.condition) {
+        Value::Int(val) => val,
+        _ => panic!("unexpected"),
+    };
+    let const_one = i32_type.const_int(1, false);
+    let condition_val =
+        emitter
+            .builder
+            .build_int_compare(IntPredicate::EQ, condition_val, const_one, "eq");
+    emitter
+        .builder
+        .build_conditional_branch(condition_val, &cont_bb, &then_bb);
+
+    emitter.builder.position_at_end(&then_bb);
+    emitter.builder.build_unconditional_branch(&cont_bb);
+    emitter.builder.position_at_end(&cont_bb);
+
+    let phi = emitter.builder.build_phi(i32_type, "compphi");
+
+    let entry_val = emit_expression(emitter, *node.lhs);
+    let then_val = emit_expression(emitter, *node.rhs);
+
+    let entry_val = match entry_val {
+        Value::Int(val) => val,
+        _ => panic!("TODO"),
+    };
+    let then_val = match then_val {
+        Value::Int(val) => val,
+        _ => panic!("TODO"),
+    };
+    phi.add_incoming(&[(&then_val, &then_bb), (&entry_val, &entry_bb)]);
+    Value::Int(phi.as_basic_value().into_int_value())
 }
