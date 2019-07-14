@@ -37,10 +37,12 @@ pub enum Token {
     PrefixOp(String, DebugInfo),
     SuffixOp(String, DebugInfo),
     Ide(String, DebugInfo),
+    Str(String, DebugInfo),
     Type(BasicType, DebugInfo),
     Struct(DebugInfo),
     Enum(DebugInfo),
     Switch(DebugInfo),
+    Extern(DebugInfo),
     Case(DebugInfo),
     Default(DebugInfo),
     Return(DebugInfo),
@@ -51,6 +53,7 @@ pub enum Token {
     Continue(DebugInfo),
     For(DebugInfo),
     Semi(DebugInfo),
+    Va(DebugInfo),
     CurlyS(DebugInfo),
     CurlyE(DebugInfo),
     SquareE(DebugInfo),
@@ -64,7 +67,9 @@ impl Token {
             Token::Struct(d)
             | Token::Enum(d)
             | Token::Switch(d)
+            | Token::Extern(d)
             | Token::Case(d)
+            | Token::Str(_, d)
             | Token::Default(d)
             | Token::Return(d)
             | Token::If(d)
@@ -79,6 +84,7 @@ impl Token {
             | Token::SquareE(d)
             | Token::ParenE(d)
             | Token::Colon(d)
+            | Token::Va(d)
             | Token::Question(d) => d,
             Token::FloatNum(_, d)
             | Token::IntNum(_, d)
@@ -112,6 +118,11 @@ impl Tokens {
     }
     pub fn peek(&self) -> Option<Token> {
         let mut tokens = self.clone();
+        tokens.pop()
+    }
+    pub fn peek2(&self) -> Option<Token> {
+        let mut tokens = self.clone();
+        tokens.pop();
         tokens.pop()
     }
     pub fn push(&mut self, token: Token) {

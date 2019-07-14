@@ -16,10 +16,14 @@ impl Lexer {
             ("FLOAT_NUM", r"(\d+\.\d+)"),
             ("INT_NUM", r"(\d+)"),
             ("SEMI", r";"),
+            ("VA", r"\.\.\."),
+            ("STR", r#"".+""#),
             ("TYPE", r"(int)|(float)|(char)"),
             ("STRUCT", r"(struct)"),
             ("ENUM", r"(enum)"),
             ("SWITCH", r"switch"),
+            ("CONST", r"const"),
+            ("EXTERN", r"extern"),
             ("CASE", r"case"),
             ("DEFAULT", r"default"),
             ("RETURN", r"return"),
@@ -78,6 +82,7 @@ impl Lexer {
                 "FLOAT_NUM" => tokens.push(Token::FloatNum(val, debug_info)),
                 "INT_NUM" => tokens.push(Token::IntNum(val, debug_info)),
                 "SEMI" => tokens.push(Token::Semi(debug_info)),
+                "VA" => tokens.push(Token::Va(debug_info)),
                 "TYPE" => match val.as_ref() {
                     "int" => tokens.push(Token::Type(BasicType::Int, debug_info)),
                     "float" => tokens.push(Token::Type(BasicType::Float, debug_info)),
@@ -85,8 +90,14 @@ impl Lexer {
                     _ => panic!("Unimplemented type."),
                 },
                 "STRUCT" => tokens.push(Token::Struct(debug_info)),
+                "STR" => {
+                    let val = val.trim_matches('\"').to_string();
+                    tokens.push(Token::Str(val, debug_info));
+                }
                 "ENUM" => tokens.push(Token::Enum(debug_info)),
                 "SWITCH" => tokens.push(Token::Switch(debug_info)),
+                "CONST" => (),
+                "EXTERN" => tokens.push(Token::Extern(debug_info)),
                 "CASE" => tokens.push(Token::Case(debug_info)),
                 "DEFAULT" => tokens.push(Token::Default(debug_info)),
                 "RETURN" => tokens.push(Token::Return(debug_info)),

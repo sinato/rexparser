@@ -115,7 +115,10 @@ pub fn emit_equal_expression(
                         emitter.builder.build_store(alloca, val);
                         Value::Pointer(val, val_type)
                     }
-                    _ => panic!("TODO"),
+                    _ => {
+                        println!("!!! {:?}", val_type);
+                        panic!("TODO")
+                    }
                 },
                 Value::Array(val, alloca, val_type, size) => match val_type {
                     BasicType::Int => {

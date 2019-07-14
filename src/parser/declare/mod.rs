@@ -12,8 +12,11 @@ pub enum DeclareNode {
 impl DeclareNode {
     pub fn new(tokens: &mut Tokens) -> DeclareNode {
         let mut cloned_token = tokens.clone();
-        cloned_token.pop(); // consume type token
-        cloned_token.pop(); // consume identifier
+        while let Some(token) = cloned_token.pop() {
+            if let Token::Ide(_, _) = token {
+                break;
+            }
+        }
         match cloned_token.pop() {
             Some(token) => match token {
                 Token::SuffixOp(_, _) => DeclareNode::Function(FunctionNode::new(tokens)),
@@ -29,10 +32,19 @@ pub struct FunctionNode {
     pub identifier: String,
     pub return_type: BasicType,
     pub parameters: VecDeque<DeclareVariableNode>,
-    pub statements: VecDeque<StatementNode>,
+    pub statements: Option<VecDeque<StatementNode>>,
+    pub is_extern: bool,
+    pub is_var_args: bool,
 }
 impl FunctionNode {
     pub fn new(tokens: &mut Tokens) -> FunctionNode {
+        let is_extern = if let Some(Token::Extern(_)) = tokens.peek() {
+            tokens.pop();
+            true
+        } else {
+            false
+        };
+
         let return_type = match tokens.pop().unwrap() {
             Token::Type(val, _) => val,
             _ => panic!(),
@@ -44,10 +56,21 @@ impl FunctionNode {
         tokens.pop(); // consume (
 
         let mut parameters: VecDeque<DeclareVariableNode> = VecDeque::new();
-        loop {
-            if let Some(Token::ParenE(_)) = tokens.peek() {
-                tokens.pop(); // consume )
-                break;
+        let is_var_args = loop {
+            match tokens.peek() {
+                Some(token) => match token {
+                    Token::ParenE(_) => {
+                        tokens.pop(); // consume )
+                        break false;
+                    }
+                    Token::Va(_) => {
+                        tokens.pop(); // consume ...
+                        tokens.pop(); // consume );
+                        break true;
+                    }
+                    _ => (),
+                },
+                None => panic!("unexpected"),
             }
             let declare_variable_node = DeclareVariableNode::new(tokens, true, None);
             parameters.push_back(declare_variable_node);
@@ -56,24 +79,33 @@ impl FunctionNode {
                     tokens.pop(); // consume ,
                 }
             }
-        }
-        tokens.pop(); // consume {
-
-        let mut statements: VecDeque<StatementNode> = VecDeque::new();
-        loop {
-            if let Some(Token::CurlyE(_)) = tokens.peek() {
-                tokens.pop(); // consume }
-                break;
-            }
-            let statement = StatementNode::new(tokens);
-            statements.push_back(statement);
-        }
-
+        };
+        let statements = match tokens.pop() {
+            Some(token) => match token {
+                Token::CurlyS(_) => {
+                    let mut statements: VecDeque<StatementNode> = VecDeque::new();
+                    loop {
+                        if let Some(Token::CurlyE(_)) = tokens.peek() {
+                            tokens.pop(); // consume }
+                            break;
+                        }
+                        let statement = StatementNode::new(tokens);
+                        statements.push_back(statement);
+                    }
+                    Some(statements)
+                }
+                Token::Semi(_) => None,
+                _ => panic!("unexpected"),
+            },
+            None => panic!("unexpected"),
+        };
         FunctionNode {
             identifier,
             return_type,
             parameters,
             statements,
+            is_extern,
+            is_var_args,
         }
     }
 }

@@ -60,9 +60,10 @@ impl ExpressionNode {
     fn new_with_prefix(tokens: &mut Tokens) -> ExpressionNode {
         match tokens.peek() {
             Some(token) => match token {
-                Token::Ide(_, _) | Token::IntNum(_, _) | Token::FloatNum(_, _) => {
-                    TokenNode::new(tokens)
-                }
+                Token::Ide(_, _)
+                | Token::IntNum(_, _)
+                | Token::FloatNum(_, _)
+                | Token::Str(_, _) => TokenNode::new(tokens),
                 Token::PrefixOp(_, _) => PrefixNode::new(tokens),
                 Token::Op(op, debug_info) => match op.as_ref() {
                     // treat as an operator

@@ -5,7 +5,7 @@ pub mod expression;
 use inkwell::basic_block::BasicBlock;
 use inkwell::builder::Builder;
 use inkwell::context::Context;
-use inkwell::module::Module;
+use inkwell::module::{Linkage, Module};
 use inkwell::types::BasicTypeEnum;
 use inkwell::values::{ArrayValue, FloatValue, InstructionOpcode, IntValue, PointerValue};
 use inkwell::{AddressSpace, IntPredicate};
@@ -115,66 +115,74 @@ fn emit_program(emitter: &mut Emitter, node: ProgramNode) {
 }
 fn emit_function(emitter: &mut Emitter, function_node: FunctionNode) -> Control {
     let identifier = function_node.identifier;
-    let mut statement_nodes = function_node.statements;
-
     let parameters = function_node.parameters;
     let mut param_types: Vec<BasicTypeEnum> = Vec::new();
 
     let mut cparameters = parameters.clone();
-
     while let Some(declare_variable_node) = cparameters.pop_front() {
         let val_type = declare_variable_node.value_type;
         let param_type = get_nested_type(emitter, val_type);
         param_types.push(param_type);
     }
-    emitter.environment.push_scope();
-    let fn_type = emitter.context.i32_type().fn_type(&param_types, false);
-    let func = emitter.module.add_function(&identifier, fn_type, None);
-
-    let basic_block = emitter.context.append_basic_block(&func, "entry");
-    emitter.builder.position_at_end(&basic_block);
-
-    for (i, declare_variable_node) in parameters.into_iter().enumerate() {
-        let value_type = declare_variable_node.value_type;
-        let identifier = declare_variable_node.identifier;
-
-        let inkwell_value_type = get_nested_type(emitter, value_type.clone());
-        let alloca = emitter
-            .builder
-            .build_alloca(inkwell_value_type, &identifier);
+    let fn_type = emitter
+        .context
+        .i32_type()
+        .fn_type(&param_types, function_node.is_var_args);
+    let func = if function_node.is_extern {
         emitter
-            .environment
-            .insert_new(identifier, (alloca, value_type.clone()));
-
-        let basic_value = match func.get_nth_param(i as u32) {
-            Some(val) => val,
-            None => panic!(),
-        };
-        match value_type {
-            BasicType::Int => {
-                let value = basic_value.into_int_value();
-                emitter.builder.build_store(alloca, value);
-            }
-            BasicType::Pointer(_) => {
-                let value = basic_value.into_pointer_value();
-                emitter.builder.build_store(alloca, value);
-            }
-            BasicType::Array(_, _) => {
-                let value = basic_value.into_array_value();
-                emitter.builder.build_store(alloca, value);
-            }
-            _ => panic!("TODO"),
-        }
-    }
-
-    let next_blocks = NextBlocks {
-        break_block: None,
-        continue_block: None,
+            .module
+            .add_function(&identifier, fn_type, Some(Linkage::External))
+    } else {
+        emitter.module.add_function(&identifier, fn_type, None)
     };
-    while let Some(statement_node) = statement_nodes.pop_front() {
-        emit_statement(emitter, statement_node, next_blocks.clone());
+
+    if let Some(mut statement_nodes) = function_node.statements {
+        emitter.environment.push_scope();
+        let basic_block = emitter.context.append_basic_block(&func, "entry");
+        emitter.builder.position_at_end(&basic_block);
+
+        for (i, declare_variable_node) in parameters.into_iter().enumerate() {
+            let value_type = declare_variable_node.value_type;
+            let identifier = declare_variable_node.identifier;
+
+            let inkwell_value_type = get_nested_type(emitter, value_type.clone());
+            let alloca = emitter
+                .builder
+                .build_alloca(inkwell_value_type, &identifier);
+            emitter
+                .environment
+                .insert_new(identifier, (alloca, value_type.clone()));
+
+            let basic_value = match func.get_nth_param(i as u32) {
+                Some(val) => val,
+                None => panic!(),
+            };
+            match value_type {
+                BasicType::Int => {
+                    let value = basic_value.into_int_value();
+                    emitter.builder.build_store(alloca, value);
+                }
+                BasicType::Pointer(_) => {
+                    let value = basic_value.into_pointer_value();
+                    emitter.builder.build_store(alloca, value);
+                }
+                BasicType::Array(_, _) => {
+                    let value = basic_value.into_array_value();
+                    emitter.builder.build_store(alloca, value);
+                }
+                _ => panic!("TODO"),
+            }
+        }
+
+        let next_blocks = NextBlocks {
+            break_block: None,
+            continue_block: None,
+        };
+        while let Some(statement_node) = statement_nodes.pop_front() {
+            emit_statement(emitter, statement_node, next_blocks.clone());
+        }
+        emitter.environment.pop_scope();
     }
-    emitter.environment.pop_scope();
     Control::Continue
 }
 

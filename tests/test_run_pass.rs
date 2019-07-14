@@ -338,6 +338,12 @@ fn test_ternary_exp() {
 }
 
 #[test]
+fn test_extern() {
+    let filepath = "./tests/resources/test_extern.c";
+    run(filepath, "", "0");
+}
+
+#[test]
 fn test_comp_int() {
     let filepath = "./tests/resources/builtin/test_comp_int.c";
     run(filepath, "", "101");

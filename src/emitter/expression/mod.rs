@@ -188,6 +188,10 @@ fn emit_token(emitter: &mut Emitter, node: TokenNode) -> Value {
                 None => panic!(format!("use of undeclared identifier {}", identifier)),
             }
         }
+        Token::Str(val, _) => {
+            let s = unsafe { emitter.builder.build_global_string(&val, "str") };
+            Value::Pointer(s.as_pointer_value(), BasicType::Int)
+        }
         _ => panic!(),
     }
 }
