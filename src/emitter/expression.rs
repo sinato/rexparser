@@ -36,10 +36,14 @@ fn emit_token(emitter: &mut Emitter, node: TokenNode) -> PointerValue {
             Some(other) => match other {
                 Other::Variable(alloca) => alloca,
                 Other::Global(alloca) => alloca.as_pointer_value(),
-                _ => panic!("TODO"),
+                _ => panic!(format!("TODO: {:?}", other)),
             },
             None => panic!(format!("{} is not exists", identifier)),
         },
+        Token::Str(val, _) => {
+            let s = unsafe { emitter.builder.build_global_string(&val, "str") };
+            s.as_pointer_value()
+        }
         _ => panic!("TODO"),
     }
 }

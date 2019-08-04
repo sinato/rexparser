@@ -6,6 +6,7 @@ use crate::emitter::environment::*;
 use crate::emitter::expression::*;
 use crate::emitter::util::*;
 use crate::emitter::*;
+use crate::lexer::token::*;
 use crate::parser::statement::*;
 
 use std::collections::VecDeque;
@@ -28,8 +29,9 @@ pub fn emit_statement(
         StatementNode::For(node) => emit_for_statement(emitter, node),
         StatementNode::Struct(node) => emit_struct_statement(emitter, node),
         StatementNode::Enum(node) => emit_enum_statement(emitter, node),
+        StatementNode::Undetermined(node) => emit_undetermined_statement(emitter, node),
         StatementNode::Empty => Control::Continue,
-        _ => panic!(format!("TODO: {:?}", node)),
+        _ => panic!("TODO"),
     }
 }
 
@@ -487,4 +489,32 @@ fn emit_switch_statement(emitter: &mut Emitter, node: SwitchStatementNode) -> Co
 
     emitter.builder.position_at_end(&cont_bb);
     Control::Continue
+}
+
+fn emit_undetermined_statement(emitter: &mut Emitter, node: UndeterminedStatementNode) -> Control {
+    let mut tokens = node.tokens;
+    let token = tokens.peek().expect("expect at least one token");
+    let identifier = match token {
+        Token::Ide(identifier, _) => identifier,
+        _ => panic!("unexpected"),
+    };
+    let is_type = match emitter.env.get_other(&identifier) {
+        Some(other) => match other {
+            Other::Type(_) => true,
+            _ => false,
+        },
+        None => false,
+    };
+
+    let node = if is_type {
+        StatementNode::Declare(DeclareStatementNode::new(&mut tokens))
+    } else {
+        StatementNode::Expression(ExpressionStatementNode::new(&mut tokens))
+    };
+
+    let next_block = NextBlock {
+        break_block: None,
+        continue_block: None,
+    };
+    emit_statement(emitter, node, next_block)
 }

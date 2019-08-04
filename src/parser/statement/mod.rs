@@ -21,30 +21,13 @@ pub enum StatementNode {
     Default(DefaultStatementNode),
     Break(BreakStatementNode),
     Continue(ContinueStatementNode),
+    Undetermined(UndeterminedStatementNode),
     Empty,
 }
 impl StatementNode {
     pub fn new(tokens: &mut Tokens) -> StatementNode {
         match tokens.peek().unwrap() {
-            Token::Ide(_, _) => {
-                let maybe_expression = tokens.exist_equal_before_semi();
-                match tokens.peek2() {
-                    Some(token) => match token {
-                        Token::Op(_, _)
-                        | Token::PrefixOp(_, _)
-                        | Token::SuffixOp(_, _)
-                        | Token::Question(_) => {
-                            if maybe_expression {
-                                StatementNode::Expression(ExpressionStatementNode::new(tokens))
-                            } else {
-                                StatementNode::Declare(DeclareStatementNode::new(tokens))
-                            }
-                        }
-                        _ => StatementNode::Declare(DeclareStatementNode::new(tokens)),
-                    },
-                    None => panic!("unexpected"),
-                }
-            }
+            Token::Ide(_, _) => StatementNode::Undetermined(UndeterminedStatementNode::new(tokens)),
             Token::Struct(_) => StatementNode::Struct(StructStatementNode::new(tokens)),
             Token::Enum(_) => StatementNode::Enum(EnumStatementNode::new(tokens)),
             Token::Return(_) => StatementNode::Return(ReturnStatementNode::new(tokens)),
@@ -343,6 +326,27 @@ impl ForStatementNode {
             condition_expression,
             loop_expression,
             block,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct UndeterminedStatementNode {
+    pub tokens: Tokens,
+}
+impl UndeterminedStatementNode {
+    pub fn new(tokens: &mut Tokens) -> UndeterminedStatementNode {
+        let mut statement_tokens: Vec<Token> = Vec::new();
+        while let Some(token) = tokens.pop() {
+            statement_tokens.push(token.clone());
+            if let Token::Semi(_) = token {
+                break;
+            }
+        }
+        UndeterminedStatementNode {
+            tokens: Tokens {
+                tokens: statement_tokens,
+            },
         }
     }
 }

@@ -109,46 +109,10 @@ impl Tokens {
         let mut tokens = self.clone();
         tokens.pop()
     }
-    pub fn peek2(&self) -> Option<Token> {
-        let mut tokens = self.clone();
-        tokens.pop();
-        tokens.pop()
-    }
     pub fn push(&mut self, token: Token) {
         self.tokens.push(token);
     }
     pub fn reverse(&mut self) {
         self.tokens.reverse()
-    }
-    pub fn exist_equal_before_semi(&self) -> bool {
-        let mut tokens = self.clone();
-        let mut exist_equal = false;
-        while let Some(token) = tokens.pop() {
-            match token {
-                Token::Op(op, _) => {
-                    if op == String::from("=") || op == String::from("+=") {
-                        exist_equal = true;
-                    }
-                }
-                Token::PrefixOp(op, _) => {
-                    if op == String::from("++") {
-                        exist_equal = true;
-                    }
-                }
-                Token::SuffixOp(op, _) => {
-                    if op == String::from("++") {
-                        exist_equal = true;
-                    }
-                }
-                Token::Semi(_) => break,
-                Token::Ide(_, _) => {
-                    if let Some(Token::SuffixOp(_, _)) = tokens.peek() {
-                        return true;
-                    }
-                }
-                _ => (),
-            }
-        }
-        exist_equal
     }
 }

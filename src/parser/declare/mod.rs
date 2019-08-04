@@ -11,15 +11,14 @@ pub enum DeclareNode {
 impl DeclareNode {
     pub fn new(tokens: &mut Tokens) -> DeclareNode {
         let mut cloned_token = tokens.clone();
-        cloned_token.pop(); //consume type token
-        cloned_token.pop(); // consume identifier
-        match cloned_token.pop() {
-            Some(token) => match token {
-                Token::SuffixOp(_, _) => DeclareNode::Function(FunctionNode::new(tokens)),
-                _ => DeclareNode::Variable(DeclareStatementNode::new(tokens)),
-            },
-            None => panic!(),
+        while let Some(token) = cloned_token.pop() {
+            match token {
+                Token::SuffixOp(_, _) => return DeclareNode::Function(FunctionNode::new(tokens)),
+                Token::Semi(_) => return DeclareNode::Variable(DeclareStatementNode::new(tokens)),
+                _ => (),
+            }
         }
+        panic!("unexpected")
     }
 }
 
