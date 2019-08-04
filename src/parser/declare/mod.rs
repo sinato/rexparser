@@ -1,8 +1,7 @@
-use std::collections::VecDeque;
-
 use crate::lexer::token::*;
 use crate::parser::expression::*;
 use crate::parser::statement::*;
+use std::collections::VecDeque;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum DeclareNode {
@@ -12,11 +11,8 @@ pub enum DeclareNode {
 impl DeclareNode {
     pub fn new(tokens: &mut Tokens) -> DeclareNode {
         let mut cloned_token = tokens.clone();
-        while let Some(token) = cloned_token.pop() {
-            if let Token::Ide(_, _) = token {
-                break;
-            }
-        }
+        cloned_token.pop(); //consume type token
+        cloned_token.pop(); // consume identifier
         match cloned_token.pop() {
             Some(token) => match token {
                 Token::SuffixOp(_, _) => DeclareNode::Function(FunctionNode::new(tokens)),
@@ -27,10 +23,17 @@ impl DeclareNode {
     }
 }
 
+fn to_pointer_value(value_string: String) -> String {
+    value_string + "*"
+}
+fn to_array_value(value_string: String, size: u32) -> String {
+    value_string + "[" + &size.to_string() + "]"
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub struct FunctionNode {
     pub identifier: String,
-    pub return_type: BasicType,
+    pub return_type: String,
     pub parameters: VecDeque<DeclareVariableNode>,
     pub statements: Option<VecDeque<StatementNode>>,
     pub is_extern: bool,
@@ -46,13 +49,13 @@ impl FunctionNode {
         };
 
         let return_type = match tokens.pop().unwrap() {
-            Token::Type(val, _) => val,
+            Token::Ide(val, _) => val,
             _ => panic!(),
         };
         let identifier = match tokens.pop().unwrap() {
             Token::Ide(val, _) => val,
             _ => panic!(),
-        }; // consume main
+        }; // consume function name
         tokens.pop(); // consume (
 
         let mut parameters: VecDeque<DeclareVariableNode> = VecDeque::new();
@@ -112,7 +115,7 @@ impl FunctionNode {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct DeclareVariableNode {
-    pub value_type: BasicType,
+    pub value_type: String,
     pub identifier: String,
     pub initialize_expression: Option<ExpressionNode>,
 }
@@ -128,21 +131,21 @@ impl DeclareVariableNode {
                     Token::Ide(val, _) => val,
                     _ => panic!("unexpected"),
                 };
-                BasicType::Struct(identifier)
+                identifier
             }
             Token::Enum(_) => {
                 if let Some(Token::Ide(_, _)) = tokens.peek() {
                     tokens.pop();
                 }
-                BasicType::Int
+                String::from("int")
             }
-            Token::Type(val, _) => val,
+            Token::Ide(type_string, _) => type_string,
             _ => panic!(),
         };
 
         if let Some(Token::Op(op, _)) = tokens.peek() {
             if op == "*" {
-                value_type = BasicType::Pointer(Box::new(value_type));
+                value_type = to_pointer_value(value_type);
                 tokens.pop();
             }
         }
@@ -174,7 +177,7 @@ impl DeclareVariableNode {
     }
 }
 
-pub fn get_array_type_at_function_declare(value_type: BasicType, tokens: &mut Tokens) -> BasicType {
+pub fn get_array_type_at_function_declare(value_type: String, tokens: &mut Tokens) -> String {
     let mut value_type = value_type;
     if let Some(Token::SuffixOp(op, _)) = tokens.peek() {
         if op == "[" {
@@ -187,12 +190,12 @@ pub fn get_array_type_at_function_declare(value_type: BasicType, tokens: &mut To
             }
         }
     }
+    value_type = to_pointer_value(value_type);
     value_type = get_array_type(value_type, tokens);
-    value_type = BasicType::Pointer(Box::new(value_type));
     value_type
 }
 
-fn get_array_type(value_type: BasicType, tokens: &mut Tokens) -> BasicType {
+fn get_array_type(value_type: String, tokens: &mut Tokens) -> String {
     let mut value_type = value_type;
     let mut array_size_vec: Vec<u32> = Vec::new();
     while let Some(Token::SuffixOp(op, _)) = tokens.peek() {
@@ -209,7 +212,7 @@ fn get_array_type(value_type: BasicType, tokens: &mut Tokens) -> BasicType {
         }
     }
     while let Some(size) = array_size_vec.pop() {
-        value_type = BasicType::Array(Box::new(value_type), size);
+        value_type = to_array_value(value_type, size);
     }
     value_type
 }

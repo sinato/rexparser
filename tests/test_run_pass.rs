@@ -278,7 +278,7 @@ fn test_if_else3() {
 }
 
 #[test]
-fn test_and() {
+fn test_and1() {
     let filepath = "./tests/resources/test_and.c";
     run(filepath, "", "10");
 }

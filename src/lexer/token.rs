@@ -14,15 +14,6 @@ pub struct Property {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum BasicType {
-    Int,
-    Float,
-    Pointer(Box<BasicType>),
-    Array(Box<BasicType>, u32),
-    Struct(String), // struct identifier
-}
-
-#[derive(Debug, PartialEq, Clone)]
 pub struct DebugInfo {
     pub start: usize,
     pub end: usize,
@@ -38,7 +29,6 @@ pub enum Token {
     SuffixOp(String, DebugInfo),
     Ide(String, DebugInfo),
     Str(String, DebugInfo),
-    Type(BasicType, DebugInfo),
     Struct(DebugInfo),
     Enum(DebugInfo),
     Switch(DebugInfo),
@@ -91,8 +81,7 @@ impl Token {
             | Token::Op(_, d)
             | Token::PrefixOp(_, d)
             | Token::SuffixOp(_, d)
-            | Token::Ide(_, d)
-            | Token::Type(_, d) => d,
+            | Token::Ide(_, d) => d,
         };
 
         let mut file = File::open("target.c").unwrap();
@@ -130,5 +119,36 @@ impl Tokens {
     }
     pub fn reverse(&mut self) {
         self.tokens.reverse()
+    }
+    pub fn exist_equal_before_semi(&self) -> bool {
+        let mut tokens = self.clone();
+        let mut exist_equal = false;
+        while let Some(token) = tokens.pop() {
+            match token {
+                Token::Op(op, _) => {
+                    if op == String::from("=") || op == String::from("+=") {
+                        exist_equal = true;
+                    }
+                }
+                Token::PrefixOp(op, _) => {
+                    if op == String::from("++") {
+                        exist_equal = true;
+                    }
+                }
+                Token::SuffixOp(op, _) => {
+                    if op == String::from("++") {
+                        exist_equal = true;
+                    }
+                }
+                Token::Semi(_) => break,
+                Token::Ide(_, _) => {
+                    if let Some(Token::SuffixOp(_, _)) = tokens.peek() {
+                        return true;
+                    }
+                }
+                _ => (),
+            }
+        }
+        exist_equal
     }
 }

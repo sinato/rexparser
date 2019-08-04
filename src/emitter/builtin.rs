@@ -10,12 +10,12 @@ pub fn emit_builtin() {
     let context = Context::create();
     let module = context.create_module("builtin_module");
     let builder = context.create_builder();
-    let environment = Environment::new();
+    let env = Environment::new();
     let mut emitter = Emitter {
         context,
         builder,
         module,
-        environment,
+        env,
     };
 
     // emit builtin functions

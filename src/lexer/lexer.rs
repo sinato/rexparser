@@ -1,4 +1,4 @@
-use crate::lexer::token::{BasicType, DebugInfo, Token, Tokens};
+use crate::lexer::token::{DebugInfo, Token, Tokens};
 use log::debug;
 use regex::Regex;
 
@@ -18,7 +18,6 @@ impl Lexer {
             ("SEMI", r";"),
             ("VA", r"\.\.\."),
             ("STR", r#"".+""#),
-            ("TYPE", r"(int)|(float)|(char)"),
             ("STRUCT", r"(struct)"),
             ("ENUM", r"(enum)"),
             ("SWITCH", r"switch"),
@@ -83,12 +82,6 @@ impl Lexer {
                 "INT_NUM" => tokens.push(Token::IntNum(val, debug_info)),
                 "SEMI" => tokens.push(Token::Semi(debug_info)),
                 "VA" => tokens.push(Token::Va(debug_info)),
-                "TYPE" => match val.as_ref() {
-                    "int" => tokens.push(Token::Type(BasicType::Int, debug_info)),
-                    "float" => tokens.push(Token::Type(BasicType::Float, debug_info)),
-                    "char" => tokens.push(Token::Type(BasicType::Int, debug_info)),
-                    _ => panic!("Unimplemented type."),
-                },
                 "STRUCT" => tokens.push(Token::Struct(debug_info)),
                 "STR" => {
                     let val = val.trim_matches('\"').to_string();

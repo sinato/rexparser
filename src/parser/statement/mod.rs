@@ -26,7 +26,25 @@ pub enum StatementNode {
 impl StatementNode {
     pub fn new(tokens: &mut Tokens) -> StatementNode {
         match tokens.peek().unwrap() {
-            Token::Type(_, _) => StatementNode::Declare(DeclareStatementNode::new(tokens)),
+            Token::Ide(_, _) => {
+                let maybe_expression = tokens.exist_equal_before_semi();
+                match tokens.peek2() {
+                    Some(token) => match token {
+                        Token::Op(_, _)
+                        | Token::PrefixOp(_, _)
+                        | Token::SuffixOp(_, _)
+                        | Token::Question(_) => {
+                            if maybe_expression {
+                                StatementNode::Expression(ExpressionStatementNode::new(tokens))
+                            } else {
+                                StatementNode::Declare(DeclareStatementNode::new(tokens))
+                            }
+                        }
+                        _ => StatementNode::Declare(DeclareStatementNode::new(tokens)),
+                    },
+                    None => panic!("unexpected"),
+                }
+            }
             Token::Struct(_) => StatementNode::Struct(StructStatementNode::new(tokens)),
             Token::Enum(_) => StatementNode::Enum(EnumStatementNode::new(tokens)),
             Token::Return(_) => StatementNode::Return(ReturnStatementNode::new(tokens)),

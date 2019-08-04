@@ -1,95 +1,136 @@
-use crate::lexer::token::BasicType;
-use inkwell::values::PointerValue;
+use inkwell::types::{BasicTypeEnum, StructType};
+use inkwell::values::{GlobalValue, PointerValue};
 use std::collections::HashMap;
+
+use crate::emitter::util::*;
+use crate::emitter::Emitter;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Struct {
-    pub identifier: String,
-    pub members: Vec<(String, BasicType)>,
-}
-impl Struct {
-    pub fn find(self, key: &str) -> Option<(u32, BasicType)> {
-        let cloned_struct = self.clone();
-        for (i, (identifier, val_type)) in cloned_struct.members.into_iter().enumerate() {
-            if key == identifier {
-                return Some((i as u32, val_type));
-            }
-        }
-        None
-    }
+    pub names: Vec<String>,
+    pub struct_type: StructType,
 }
 
+#[derive(Debug, PartialEq, Clone)]
 pub struct Environment {
-    pub variables_stack: Vec<HashMap<String, (PointerValue, BasicType)>>,
-    pub structs_stack: Vec<HashMap<String, Struct>>,
+    pub scopes: Vec<Scope>,
 }
 impl Environment {
     pub fn new() -> Environment {
-        let mut variables_stack: Vec<HashMap<String, (PointerValue, BasicType)>> = Vec::new();
-        let global_variables: HashMap<String, (PointerValue, BasicType)> = HashMap::new();
-        variables_stack.push(global_variables);
-
-        let mut structs_stack: Vec<HashMap<String, Struct>> = Vec::new();
-        let global_structs: HashMap<String, Struct> = HashMap::new();
-        structs_stack.push(global_structs);
-
-        Environment {
-            variables_stack,
-            structs_stack,
-        }
+        let scopes: Vec<Scope> = Vec::new();
+        Environment { scopes }
     }
-    pub fn push_scope(&mut self) {
-        let variables: HashMap<String, (PointerValue, BasicType)> = HashMap::new();
-        self.variables_stack.push(variables);
-
-        let structs: HashMap<String, Struct> = HashMap::new();
-        self.structs_stack.push(structs);
+    pub fn push_scope(&mut self, scope: Scope) {
+        self.scopes.push(scope);
     }
     pub fn pop_scope(&mut self) {
-        self.variables_stack.pop();
-        self.structs_stack.pop();
+        self.scopes.pop();
     }
-    pub fn insert_new(
-        &mut self,
-        key: String,
-        value: (PointerValue, BasicType),
-    ) -> Option<(PointerValue, BasicType)> {
-        if let Some(variables) = self.variables_stack.last_mut() {
-            if variables.contains_key(&key) {
+    pub fn insert_new_other(&mut self, key: String, value: Other) -> Option<Other> {
+        if let Some(scope) = self.scopes.last_mut() {
+            if scope.other_stack.contains_key(&key) {
                 panic!(format!("redefinition of {}", key))
             }
-            variables.insert(key, value)
+            scope.other_stack.insert(key, value)
         } else {
             panic!()
         }
     }
-    pub fn get(&self, key: &str) -> Option<(PointerValue, BasicType)> {
-        let variables_stack = self.variables_stack.clone();
-        for mut variables in variables_stack.into_iter().rev() {
-            if let Some(value) = variables.remove(key) {
+    pub fn get_other(&self, key: &str) -> Option<Other> {
+        let scopes = self.scopes.clone();
+        for mut variables in scopes.into_iter().rev() {
+            if let Some(value) = variables.other_stack.remove(key) {
                 return Some(value);
             }
         }
         None
     }
+    pub fn insert_new_tag(&mut self, key: String, value: Tag) -> Option<Tag> {
+        if let Some(scope) = self.scopes.last_mut() {
+            if scope.tag_stack.contains_key(&key) {
+                panic!(format!("redefinition of {}", key))
+            }
+            scope.tag_stack.insert(key, value)
+        } else {
+            panic!()
+        }
+    }
+    pub fn get_tag(&self, key: &str) -> Option<Tag> {
+        let scopes = self.scopes.clone();
+        for mut variables in scopes.into_iter().rev() {
+            if let Some(value) = variables.tag_stack.remove(key) {
+                return Some(value);
+            }
+        }
+        None
+    }
+    pub fn get_type_from_string(&self, type_string: &str) -> BasicTypeEnum {
+        // parse [] (ex. int[3][2])
+        let mut vec: Vec<&str> = type_string
+            .split(|c: char| c == '[' || c == ']')
+            .filter(|v| !v.is_empty())
+            .rev()
+            .collect();
+        let type_string: &str = vec.pop().unwrap();
 
-    pub fn insert_new_struct(&mut self, key: String, value: Struct) -> Option<Struct> {
-        if let Some(structs) = self.structs_stack.last_mut() {
-            if structs.contains_key(&key) {
-                panic!(format!("redefinition of {}", key))
-            }
-            structs.insert(key, value)
-        } else {
-            panic!()
+        // parse * (ex. int*, float**,...)
+        let type_string_split: Vec<&str> = type_string.split("*").collect();
+        let pointer_depth = type_string_split.len() - 1;
+        let type_string = type_string_split
+            .get(0)
+            .expect("expect at least one element");
+
+        let mut basic_type = match self.get_other(type_string) {
+            Some(other) => match other {
+                Other::Type(t) => t,
+                _ => panic!(format!("{} is not a type", type_string)),
+            },
+            None => panic!(format!("type {} is not exist", type_string)),
+        };
+
+        for val in vec.into_iter().rev() {
+            basic_type = to_array_type(basic_type, val.parse::<u32>().unwrap());
+        }
+
+        for _ in 0..pointer_depth {
+            basic_type = to_pointer_type(basic_type);
+        }
+        basic_type
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Scope {
+    pub other_stack: HashMap<String, Other>,
+    pub tag_stack: HashMap<String, Tag>,
+}
+impl Scope {
+    pub fn new(emitter: &mut Emitter) -> Scope {
+        let mut other_stack: HashMap<String, Other> = HashMap::new();
+        let default_int_type = BasicTypeEnum::IntType(emitter.context.i32_type());
+        let default_char_type = BasicTypeEnum::IntType(emitter.context.i8_type());
+        let default_float_type = BasicTypeEnum::FloatType(emitter.context.f32_type());
+        other_stack.insert(String::from("int"), Other::Type(default_int_type));
+        other_stack.insert(String::from("char"), Other::Type(default_char_type));
+        other_stack.insert(String::from("float"), Other::Type(default_float_type));
+
+        let tag_stack: HashMap<String, Tag> = HashMap::new();
+
+        Scope {
+            other_stack,
+            tag_stack,
         }
     }
-    pub fn get_struct(&self, key: &str) -> Option<Struct> {
-        let structs_stack = self.structs_stack.clone();
-        for mut structs in structs_stack.into_iter().rev() {
-            if let Some(value) = structs.remove(key) {
-                return Some(value);
-            }
-        }
-        None
-    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Other {
+    Variable(PointerValue),
+    Type(BasicTypeEnum),
+    Global(GlobalValue),
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Tag {
+    Struct(Struct),
 }

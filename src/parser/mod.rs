@@ -2,7 +2,6 @@ pub mod declare;
 pub mod expression;
 pub mod statement;
 
-use crate::emitter::environment::*;
 use crate::lexer::token::*;
 use crate::parser::declare::*;
 use crate::parser::expression::*;
@@ -31,7 +30,8 @@ pub fn parser(tokens: &mut Tokens) -> ProgramNode {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct StructDefinitionNode {
-    pub target_struct: Struct,
+    pub identifier: String,
+    pub members: Vec<(String, String)>,
 }
 impl StructDefinitionNode {
     pub fn new(tokens: &mut Tokens) -> StructDefinitionNode {
@@ -42,7 +42,7 @@ impl StructDefinitionNode {
         }; // get type name
         tokens.pop(); // consume {
 
-        let mut members: Vec<(String, BasicType)> = Vec::new();
+        let mut members: Vec<(String, String)> = Vec::new();
         loop {
             if let Some(Token::CurlyE(_)) = tokens.peek() {
                 tokens.pop(); // consume }
@@ -56,11 +56,10 @@ impl StructDefinitionNode {
                 declare_variable_node.value_type,
             ));
         }
-        let target_struct = Struct {
+        StructDefinitionNode {
             identifier,
             members,
-        };
-        StructDefinitionNode { target_struct }
+        }
     }
 }
 
@@ -101,7 +100,7 @@ impl EnumDefinitionNode {
             // input dummy token to treat the enum as a variable declare.
             // Ex. GREEN = 10 -> int GREEN = 10
             tokens.reverse();
-            tokens.push(Token::Type(BasicType::Int, debug_info.clone()));
+            tokens.push(Token::Ide(String::from("int"), debug_info.clone()));
             tokens.reverse();
 
             let mut declare_variable_node =
